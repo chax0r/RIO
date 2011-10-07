@@ -46,7 +46,6 @@ private  String ontologyName;
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
         OntModel model = ontologyModelStore.getOntologyModel( "ontologyName" );
-		try {
 /*
 			StringBuilder queryString = new StringBuilder();
 			queryString.append( "PREFIX rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#" ).
@@ -73,16 +72,6 @@ private  String ontologyName;
 			Prologue prologue = new Prologue( prefixMap );
 			String output = ResultSetFormatter.asText( results, prologue );
 			System.out.println("Output: "+output);
-		} catch(QueryException qe){
-
-            Logger.getLogger(SPARQLQueryService.class.getName()).log(Level.SEVERE, null, qe);
-		}catch (FileNotFoundException ex) {
-
-            Logger.getLogger(SPARQLQueryService.class.getName()).log(Level.SEVERE, null, ex);
-		}catch (IOException ex) {
-
-            Logger.getLogger(SPARQLQueryService.class.getName()).log(Level.SEVERE, null, ex);
-		}
         return null;
     }
 }
