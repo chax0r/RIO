@@ -1,0 +1,21 @@
+PREFIX rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX pizza: http://www.co-ode.org/ontologies/pizza/pizza.owl# 
+SELECT * WHERE { 
+		?p rdf:type pizza:Pizza; 
+		pizza:hasTopping ?t. ?t rdf:type pizza:TomatoTopping
+		}
+		
+		
+SELECT * WHERE { ?s rdfs:subClassOf :NamedPizza}
+
+
+ PREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+ PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>
+ PREFIX owl:   <http://www.w3.org/2000/07/owl#>
+ PREFIX  p:    <http://www.co-ode.org/ontologies/pizza/pizza.owl#>
+ SELECT DISTINCT  *
+ WHERE
+  { ?targetPizza    rdfs:subClassOf   _:pizza .
+    
+
+ }
