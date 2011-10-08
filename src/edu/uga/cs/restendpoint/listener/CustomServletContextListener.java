@@ -19,6 +19,8 @@ import javax.servlet.http.HttpSessionAttributeListener;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
 import javax.servlet.http.HttpSessionBindingEvent;
+import java.io.File;
+import java.io.InputStream;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,15 +45,26 @@ public class CustomServletContextListener implements ServletContextListener,
         ServletContext sc = sce.getServletContext();
         String propertiesFile = sc.getInitParameter( "resourceFile" );
         try {
-            Configuration configuration = new PropertiesConfiguration( propertiesFile );
-            List<String> ontFileNames =  Arrays.asList( configuration.getStringArray( "owlFiles" ) );
-            List<String> filePaths = new ArrayList<String>(ontFileNames.size());
+            Configuration configuration = new PropertiesConfiguration( );
+            InputStream propertiesFileStream = sc.getResourceAsStream("/WEB-INF/resources/" + propertiesFile);
+            ( (PropertiesConfiguration)configuration ).load( propertiesFileStream );
+            List<String> ontFileNames =  Arrays.asList(configuration.getStringArray("owlFiles"));
+            /*List<String> filePaths = new ArrayList<String>(ontFileNames.size());
             for(String fileName : ontFileNames){
                 if( configuration.getString( fileName ) != null)
                     filePaths.add( configuration.getString(fileName) );
+            } */
+
+            OntologyModelStore ontologyModelStore = new OntologyModelStore( );
+            for( String fileName : ontFileNames ){
+                InputStream is = sc.getResourceAsStream( "/WEB-INF/resources/"+ fileName + ".owl");
+
+                if( is == null ){
+                    Logger.getLogger( CustomServletContextListener.class.getName() ).log( Level.SEVERE, "The owl file mentioned in the properties file does not exist.");
+                }else{
+                    ontologyModelStore.populateOntologyStoreFromFile( fileName, is );
+                }
             }
-            OntologyModelStore ontologyModelStore = new OntologyModelStore();
-            ontologyModelStore.populateOntologyStoreFromFile( filePaths );
             sc.setAttribute( "ontologyModelStore", ontologyModelStore);
         } catch (ConfigurationException e) {
             Logger.getLogger(CustomServletContextListener.class.getName()).log(Level.SEVERE, null, e);
