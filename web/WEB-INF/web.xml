@@ -15,7 +15,7 @@
 
     <context-param>
         <param-name>resourceFile</param-name>
-        <param-value>resources/owl.properties</param-value>
+        <param-value>owl.properties</param-value>
     </context-param>
     <listener>
         <listener-class>edu.uga.cs.restendpoint.listener.CustomServletContextListener</listener-class>
