@@ -13,10 +13,7 @@ import com.hp.hpl.jena.sparql.core.Prologue;
 import edu.uga.cs.restendpoint.utils.OntologyModelStore;
 
 import javax.servlet.ServletContext;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -29,23 +26,24 @@ import java.util.logging.Logger;
  *
  * @author kale
  */
-@Path("/")
+@Path("/query")
 public class SPARQLQueryService {
-private  String ontologyName;
 
     public SPARQLQueryService() {
     }
 
-    @GET
+    @POST
     @Path("{ontologyName}/execute")
     @Produces("text/html")
-    public String executeQuery ( @PathParam("expName") String ontologyName,
+    public String executeQuery ( @PathParam("ontologyName") String ontologyName,
                                  @Context ServletContext context,
                                  String queryString ){
         System.out.println( "Name of the ontology: " + ontologyName);
+        System.out.println( "Data posted: " + queryString);
+
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntModel model = ontologyModelStore.getOntologyModel( "ontologyName" );
+        OntModel model = ontologyModelStore.getOntologyModel( ontologyName );
 /*
 			StringBuilder queryString = new StringBuilder();
 			queryString.append( "PREFIX rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#" ).
@@ -72,6 +70,6 @@ private  String ontologyName;
 			Prologue prologue = new Prologue( prefixMap );
 			String output = ResultSetFormatter.asText( results, prologue );
 			System.out.println("Output: "+output);
-        return null;
+        return "";
     }
 }

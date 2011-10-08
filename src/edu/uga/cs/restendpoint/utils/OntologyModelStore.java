@@ -4,6 +4,7 @@ import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntModelSpec;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 
+import javax.servlet.ServletContext;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -26,19 +27,10 @@ public class OntologyModelStore {
         this.ontModelSet = new HashMap<String, OntModel>( );
     }
 
-    public void populateOntologyStoreFromFile( List<String> fileNames){
-
-        InputStream is = null;
-        for( String fileName : fileNames ){
-            try {
-                is = new FileInputStream( fileName );
-            } catch (FileNotFoundException e) {
-                Logger.getLogger(OntologyModelStore.class.getName()).log(Level.SEVERE, null, e);
-            }
+    public void populateOntologyStoreFromFile( String fileName, InputStream is ){
             OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
             m.read(is , "");
             this.ontModelSet.put( fileName, m);
-       }
     }
 
     public void populateOntologyStoreFromURI( List<String> uriList){
@@ -71,4 +63,5 @@ public class OntologyModelStore {
         return this.ontModelSet.get( uri );
 
     }
+
 }
