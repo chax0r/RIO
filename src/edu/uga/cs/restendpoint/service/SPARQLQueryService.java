@@ -10,6 +10,7 @@ import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.shared.PrefixMapping;
 import com.hp.hpl.jena.sparql.core.Prologue;
+import edu.uga.cs.restendpoint.utils.OntModelWrapper;
 import edu.uga.cs.restendpoint.utils.OntologyModelStore;
 
 import javax.servlet.ServletContext;
@@ -26,6 +27,9 @@ import java.util.logging.Logger;
  *
  * @author kale
  */
+
+//TODO: 1) Exception Handling
+//      2) Return appropriate
 @Path("/query")
 public class SPARQLQueryService {
 
@@ -43,7 +47,14 @@ public class SPARQLQueryService {
 
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntModel model = ontologyModelStore.getOntologyModel( ontologyName );
+        OntModelWrapper ontModelWrapper = ontologyModelStore.getOntologyModel( ontologyName );
+
+        //TODO: Throw appropriate exception and return HTTP code.
+        if( ontModelWrapper == null){
+            System.out.println( ontologyName +  " is not loaded in the server" );
+            return "";
+        }
+        OntModel model = ontModelWrapper.getOntModel();
 /*
 			StringBuilder queryString = new StringBuilder();
 			queryString.append( "PREFIX rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#" ).
