@@ -48,7 +48,7 @@ public class CustomServletContextListener implements ServletContextListener,
             Configuration configuration = new PropertiesConfiguration( );
             InputStream propertiesFileStream = sc.getResourceAsStream("/WEB-INF/resources/" + propertiesFile);
             ( (PropertiesConfiguration)configuration ).load( propertiesFileStream );
-            List<String> ontFileNames =  Arrays.asList(configuration.getStringArray("owlFiles"));
+            List<String> ontologies =  Arrays.asList(configuration.getStringArray("ontologies"));
             /*List<String> filePaths = new ArrayList<String>(ontFileNames.size());
             for(String fileName : ontFileNames){
                 if( configuration.getString( fileName ) != null)
@@ -56,13 +56,16 @@ public class CustomServletContextListener implements ServletContextListener,
             } */
 
             OntologyModelStore ontologyModelStore = new OntologyModelStore( );
-            for( String fileName : ontFileNames ){
-                InputStream is = sc.getResourceAsStream( "/WEB-INF/resources/"+ fileName + ".owl");
+            for( String ontology : ontologies ){
+                String fileName = configuration.getString( ontology + ".filename" );
+                String URI = configuration.getString( ontology + ".uri");
+
+                InputStream is = sc.getResourceAsStream( "/WEB-INF/resources/"+ fileName );
 
                 if( is == null ){
                     Logger.getLogger( CustomServletContextListener.class.getName() ).log( Level.SEVERE, "The owl file mentioned in the properties file does not exist.");
                 }else{
-                    ontologyModelStore.populateOntologyStoreFromFile( fileName, is );
+                    ontologyModelStore.populateOntologyStoreFromFile( ontology, is, URI );
                 }
             }
             sc.setAttribute( "ontologyModelStore", ontologyModelStore);
