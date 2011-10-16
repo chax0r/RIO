@@ -21,16 +21,17 @@ import java.util.logging.Logger;
  * Email: <kale@cs.uga.edu>
  */
 public class OntologyModelStore {
-    private HashMap<String, OntModel> ontModelSet;
+    private HashMap<String, OntModelWrapper> ontModelSet;
 
     public OntologyModelStore( ) {
-        this.ontModelSet = new HashMap<String, OntModel>( );
+        this.ontModelSet = new HashMap<String, OntModelWrapper>( );
     }
 
-    public void populateOntologyStoreFromFile( String fileName, InputStream is ){
+    public void populateOntologyStoreFromFile( String fileName, InputStream is, String URI ){
             OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
             m.read(is , "");
-            this.ontModelSet.put( fileName, m);
+            OntModelWrapper ow = new OntModelWrapper(m, "", "");
+            this.ontModelSet.put( fileName, ow);
     }
 
     public void populateOntologyStoreFromURI( List<String> uriList){
@@ -38,7 +39,8 @@ public class OntologyModelStore {
         for( String uri : uriList ){
             OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
             m.read(uri , "");
-            this.ontModelSet.put( uri, m);
+            OntModelWrapper ow = new OntModelWrapper(m, "", "");
+            this.ontModelSet.put( uri, ow);
         }
     }
     /**
@@ -49,7 +51,8 @@ public class OntologyModelStore {
 
         OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
                  m.read( uri, "");
-        this.ontModelSet.put( uri, m);
+        OntModelWrapper ow = new OntModelWrapper(m, "", "");
+        this.ontModelSet.put( uri, ow);
 
     }
 
@@ -58,7 +61,7 @@ public class OntologyModelStore {
      * @param uri : The uri that represents the ontology.
      * @return: The Jena ontology model <OntModel> class reference
      */
-    public OntModel getOntologyModel( String uri ){
+    public OntModelWrapper getOntologyModel( String uri ){
 
         return this.ontModelSet.get( uri );
 
