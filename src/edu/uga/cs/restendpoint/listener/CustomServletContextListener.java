@@ -7,8 +7,7 @@ package edu.uga.cs.restendpoint.listener;
  * Email: <kale@cs.uga.edu>
  */
 
-import edu.uga.cs.restendpoint.utils.OntologyModelStore;
-import edu.uga.cs.restendpoint.utils.PropertyFileParser;
+import edu.uga.cs.restendpoint.model.OntologyModelStore;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
@@ -19,7 +18,6 @@ import javax.servlet.http.HttpSessionAttributeListener;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
 import javax.servlet.http.HttpSessionBindingEvent;
-import java.io.File;
 import java.io.InputStream;
 import java.util.*;
 import java.util.logging.Level;
