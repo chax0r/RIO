@@ -5,8 +5,11 @@ import com.google.gson.reflect.TypeToken;
 import com.hp.hpl.jena.ontology.*;
 import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.util.iterator.ExtendedIterator;
-import edu.uga.cs.restendpoint.utils.OntModelWrapper;
-import edu.uga.cs.restendpoint.utils.OntologyModelStore;
+import edu.uga.cs.restendpoint.model.OntModelWrapper;
+import edu.uga.cs.restendpoint.model.OntologyModelStore;
+import edu.uga.cs.restendpoint.utils.RestOntInterfaceConstants;
+import edu.uga.cs.restendpoint.utils.RestOntInterfaceUtil;
+import org.jboss.resteasy.spi.BadRequestException;
 
 import javax.servlet.ServletContext;
 import javax.ws.rs.GET;
@@ -27,194 +30,250 @@ import java.util.*;
 public class NavigationalService {
 
     @GET
-    @Path("{ontologyName}/classes")
-    public String getAllClasses(@PathParam("ontologyName") String ontologyName,
-                                 @Context ServletContext context){
+    @Path("{ontologyName}/class/{className}/{associationsQuery:.+}")
+    public String navigateOntology(@PathParam("ontologyName") String ontologyName,
+                                   @PathParam("className") String className,
+                                   @PathParam("associationQuery") String associationsQuery,
+                                    @Context ServletContext context ){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntModelWrapper ontModelWrapper = ontologyModelStore.getOntologyModel( ontologyName );
+        OntModelWrapper modelWrapper = ontologyModelStore.getOntologyModel(ontologyName);
+        OntClass ontClass = RestOntInterfaceUtil. getClass(ontologyName, className, ontologyModelStore);
+        Set<OntClass> interimClasses = new HashSet<OntClass>();
+        interimClasses.add( ontClass );
+        String[] associations = associationsQuery.split("/");
 
-        //TODO: Throw appropriate exception and return HTTP code.
-        if( ontModelWrapper == null){
-            System.out.println( ontologyName +  " is not loaded in the server" );
-            return "";
-        }
-        OntModel model = ontModelWrapper.getOntModel();
-        ExtendedIterator classItr =  model.listNamedClasses();
-        List<String> classList = new ArrayList<String>();
-        while( classItr.hasNext() ){
-            OntClass o = (OntClass) classItr.next();
-            if( o.getURI() != null )
-                classList.add( o.getURI() );
+        for( String association : associations){
+
+            if( RestOntInterfaceConstants.SUPERCLASS.compareToIgnoreCase( association ) == 0 ){
+
+                Set<OntClass> result = getAllSuperClass(interimClasses);
+                if( result == null || result.isEmpty()){
+                    break;
+                }
+                interimClasses.clear();
+                interimClasses = result;
+
+            }else if( RestOntInterfaceConstants.SUBCLASS.compareToIgnoreCase( association ) == 0 ){
+
+                Set<OntClass> result = getAllSubClass(interimClasses);
+                if( result == null || result.isEmpty()){
+                    break;
+                }
+                interimClasses.clear();
+                interimClasses = result;
+
+
+            }else if( RestOntInterfaceConstants.EQUIVALENT.compareToIgnoreCase( association ) == 0 ){
+
+                Set<OntClass> result = getEquivalentClass( interimClasses );
+                if( result == null || result.isEmpty()){
+                    break;
+                }
+                interimClasses.clear();
+                interimClasses = result;
+
+
+            }else if( RestOntInterfaceConstants.DISJOINT.compareToIgnoreCase( association ) == 0 ){
+
+                Set<OntClass> result = getDisjointClass(interimClasses);
+                if( result == null || result.isEmpty()){
+                    break;
+                }
+                interimClasses.clear();
+                interimClasses = result;
+
+
+            }else if ( RestOntInterfaceConstants.COMPLEMENT.compareToIgnoreCase( association ) == 0 ) {
+
+                Set<OntClass> result = getComplementOfClass(interimClasses);
+                if( result == null || result.isEmpty()){
+                    break;
+                }
+                interimClasses.clear();
+                interimClasses = result;
+
+            }else if ( RestOntInterfaceConstants.UNION.compareToIgnoreCase( association ) == 0 ) {
+
+                Set<OntClass> result = getUnionClasses(interimClasses);
+                if( result == null || result.isEmpty()){
+                    break;
+                }
+                interimClasses.clear();
+                interimClasses = result;
+
+            }else if( RestOntInterfaceConstants.DISJOINT.compareToIgnoreCase( association ) == 0){
+//                Set<OntClass> result = getUnionClasses( interimClasses );
+                
+            }else{
+                    OntProperty ontProperty = modelWrapper.getOntModel().
+                                                    getOntProperty(modelWrapper.getURI() +
+                                                            "#" + association);
+
+                    if( ontProperty == null ){
+                        System.out.println( association + "is not present in " + ontologyName + " ontology");
+                       // throw new BadRequestException();
+                    }
+
+                    Set<OntClass> result = processProperty( interimClasses, ontProperty );
+                    if( result == null || result.isEmpty()){
+                        break;
+                    }
+                    interimClasses.clear();
+                    interimClasses = result;
+
+            }
         }
 
-        Gson gsn = new Gson();
-        Type listType = new TypeToken<List<String>>() {}.getType();
-        return gsn.toJson( classList, listType );
+        return convertToJson(interimClasses);
     }
 
-
-    @GET
-    @Path("{ontologyName}/class/{className}/subClasses")
-        public String getAllSubClassesOfaClass( @PathParam("ontologyName") String ontologyName,
-                                                @PathParam("className") String className,
-                                                 @Context ServletContext context){
-        OntClass ontClass = getClass(ontologyName, className, context);
-        if(ontClass == null){
-            System.out.println( className +  " does not exist in " + ontologyName + " ontology");
-            return "";
+    private Set<OntClass> getUnionClasses(Set<OntClass> ontClassSet) {
+        Set<OntClass> ontClasses = new HashSet<OntClass>();
+        for( OntClass cls : ontClassSet ){
 
         }
 
-        List<String> subClasses = new ArrayList<String>();
-        ExtendedIterator subClassItr = ontClass.listSubClasses( true );
-
-        while( subClassItr.hasNext() ){
-            OntClass subClass = (OntClass) subClassItr.next();
-            if( subClass.getLocalName() != null )
-                subClasses.add( subClass.getLocalName() );
-
-        }
-        Gson gsn = new Gson();
-        Type listType = new TypeToken<List<String>>() {}.getType();
-        return gsn.toJson( subClasses, listType );
+        return ontClasses ;
     }
 
-
-    @GET
-    @Path("{ontologyName}/class/{className}/superClasses")
-        public String getAllSuperClassesOfaClass( @PathParam("ontologyName") String ontologyName,
-                                                @PathParam("className") String className,
-                                                 @Context ServletContext context){
-
-        OntClass ontClass = getClass(ontologyName, className, context);
-        if(ontClass == null){
-            System.out.println( className +  " does not exist in " + ontologyName + " ontology");
-            return "";
-
+    private Set<OntClass> getDisjointClass( Set<OntClass> ontClassSet ) {
+        Set<OntClass> ontClasses = new HashSet<OntClass>();
+        for( OntClass ontClass : ontClassSet ){
+            ExtendedIterator classItr = ontClass.listDisjointWith();
+            while( classItr.hasNext() ){
+                ontClasses.add( (OntClass)classItr.next() );
+            }
         }
-
-        List<String> superClasses = new ArrayList<String>();
-        ExtendedIterator superClassItr = ontClass.listSuperClasses(true);
-
-        while( superClassItr.hasNext() ){
-            OntClass superClass = (OntClass) superClassItr.next();
-            if( superClass.getLocalName() != null )
-                superClasses.add( superClass.getLocalName() );
-
-        }
-        Gson gsn = new Gson();
-        Type listType = new TypeToken<List<String>>() {}.getType();
-        return gsn.toJson( superClasses, listType );
+        return ontClasses;
     }
 
-    @GET
-    @Path("{ontologyName}/class/{className}/properties")
-        public String getAllPropertiesOfaClass( @PathParam("ontologyName") String ontologyName,
-                                                @PathParam("className") String className,
-                                                @Context ServletContext context){
-        OntClass ontClass = getClass(ontologyName, className, context);
+    private Set<OntClass> getEquivalentClass( Set<OntClass> ontClassSet ) {
 
-        ExtendedIterator propItr = ontClass.listDeclaredProperties();
-        List<String> properties = new ArrayList<String>();
-
-        while( propItr.hasNext() ){
-            OntProperty property = (OntProperty) propItr.next();
-            properties.add( property.getLocalName() );
+        Set<OntClass> ontClasses = new HashSet<OntClass>();
+        for( OntClass ontClass : ontClassSet){
+            ExtendedIterator classItr = ontClass.listEquivalentClasses();
+            while( classItr.hasNext() ){
+                ontClasses.add( (OntClass)classItr.next() );
+            }
         }
-        Gson gsn = new Gson();
-        Type listType = new TypeToken<List<String>>() {}.getType();
-        return gsn.toJson( properties, listType );
+        return ontClasses;
     }
 
-    @GET
-    @Path("{ontologyName}/class/{className}/restrictionsValues")
-        public String getRestrictionValuesOnaClass( @PathParam("ontologyName") String ontologyName,
-                                                @PathParam("className") String className,
-                                                @Context ServletContext context){
-        OntClass ontClass = getClass(ontologyName, className, context);
-        ExtendedIterator superClassItr = ontClass.listSuperClasses(true);
-        Map<String, List<String>> restrictionValueMap = new HashMap<String, List<String>>();
-        while( superClassItr.hasNext() ){
+    private Set<OntClass> getComplementOfClass(Set<OntClass> ontClassSet ) {
+        Set<OntClass> ontClasses = new HashSet<OntClass>();
+        for( OntClass ontClass : ontClassSet){
+
+            if( ontClass.isComplementClass() ){
+
+                ontClassSet.add(ontClass.asComplementClass().getOperand());
+            }
+        }
+        return ontClasses;
+    }
+
+    private Set<OntClass> getAllSubClass( Set<OntClass> ontClassSet ) {
+
+        Set<OntClass> ontClasses = new HashSet<OntClass>();
+        for( OntClass ontClass : ontClassSet){
+
+            ExtendedIterator subClassItr = ontClass.listSubClasses( false );
+
+            while( subClassItr.hasNext() ){
+                ontClasses.add( (OntClass) subClassItr.next() );
+            }
+        }
+        return ontClasses;
+    }
+
+    private Set<OntClass> getAllSuperClass( Set<OntClass> ontClassSet ) {
+        Set<OntClass> ontClasses = new HashSet<OntClass>();
+
+        for( OntClass ontClass : ontClassSet ){
+            ExtendedIterator superClassItr = ontClass.listSuperClasses( false );
+
+            while( superClassItr.hasNext() ){
+                ontClasses.add( (OntClass) superClassItr.next() );
+            }
+        }
+        return ontClasses;
+    }
+
+    private String convertToJson(Set<OntClass> interimClasses) {
+        Gson gsn = new Gson();
+        Type setType = new TypeToken<Set<String>>() {}.getType();
+        return gsn.toJson( interimClasses, setType );
+    }
+
+    private Set<OntClass> processProperty(Set<OntClass> ontClasses, OntProperty association) {
+
+        Set<OntClass> resultClasses = new HashSet<OntClass>();
+
+
+
+        for( OntClass cls : ontClasses ){
+
+            //TODO: Do we need to check if its a domain/range
+            // What info we will get if the given ontClass is a domain/range of the given association
+
+            if( association.hasDomain( cls.asResource() ) ){
+
+            }
+
+            Set<OntClass> interim = find( cls, association );
+            if( interim!=null && !interim.isEmpty() ){
+                resultClasses.addAll( interim );
+
+            }
+        }
+        return resultClasses;
+    }
+
+    private Set<OntClass> find(OntClass cls, OntProperty association) {
+
+         Set<OntClass> resultClasses = new HashSet<OntClass>();
+         ExtendedIterator superClassItr = cls.listSuperClasses( false );
+            while( superClassItr.hasNext() ){
                 OntClass c = (OntClass) superClassItr.next();
 
                 if( c.isRestriction()){
-
                     Restriction r = c.as(Restriction.class);
-                    List<String> restrictionValues ;
 
-                    if( restrictionValueMap.containsKey(r.getOnProperty().getLocalName()) ){
-                        restrictionValues = restrictionValueMap.get( r.getOnProperty().getLocalName() );
-                    }else{
-                        restrictionValues = new ArrayList<String>();
-                        restrictionValueMap.put( r.getOnProperty().getLocalName(), restrictionValues);
+                    if( r.getOnProperty().getURI().compareToIgnoreCase( association.getURI() ) == 0)
+                        System.out.println("Restriction on : "+ r.getOnProperty().getLocalName() );
+
+                        if(r.isAllValuesFromRestriction()){
+
+                            AllValuesFromRestriction allValuesFromRestriction = r.asAllValuesFromRestriction();
+                            Resource res = allValuesFromRestriction.getAllValuesFrom();
+                            resultClasses.add(res.as(OntClass.class));
+
+                        }else if( r.isSomeValuesFromRestriction() ){
+
+                            SomeValuesFromRestriction someValuesFromRestriction = r.asSomeValuesFromRestriction();
+                            Resource res = someValuesFromRestriction.getSomeValuesFrom();
+                            resultClasses.add( res.as(OntClass.class) );
+
+                        }else if( r.isHasValueRestriction() ){
+
+                            HasValueRestriction hasValueRestriction = r.asHasValueRestriction();
+                            if( hasValueRestriction.getHasValue() != null &&
+                                    hasValueRestriction.getHasValue().isResource()){
+
+                                Resource res = hasValueRestriction.getHasValue().asResource();
+                                resultClasses.add( res.as(OntClass.class) );
+
+                            }else{
+
+                                System.out.println(" Has value restriction for " + association);
+
+                            }
+                        }
                     }
 
-
-                    if(r.isAllValuesFromRestriction()){
-                        AllValuesFromRestriction allValuesFromRestriction = r.asAllValuesFromRestriction();
-                        restrictionValues.add( allValuesFromRestriction.getAllValuesFrom().getLocalName() );
-                    }
-
-                    if( r.isSomeValuesFromRestriction() ){
-                        SomeValuesFromRestriction someValuesFromRestriction = r.asSomeValuesFromRestriction();
-                        restrictionValues.add(someValuesFromRestriction.getSomeValuesFrom().getLocalName());
-                    }
-
-                    if( r.isCardinalityRestriction() ){
-                        CardinalityRestriction cardinalityRestriction = r.asCardinalityRestriction();
-                        restrictionValues.add( Integer.toString( cardinalityRestriction.getCardinality() ) );
-                    }
-
-
-                }
-        }
-
-        Gson gsn = new Gson();
-        Type mapType = new TypeToken< Map<String,List<String>> >() {}.getType();
-        return gsn.toJson( restrictionValueMap, mapType );
+            }
+        return resultClasses;
     }
 
 
-    @GET
-    @Path("{ontologyName}/class/{className}/restrictions")
-        public String getAllRestrictionsONaClass( @PathParam("ontologyName") String ontologyName,
-                                                @PathParam("className") String className,
-                                                @Context ServletContext context){
-        OntClass ontClass = getClass(ontologyName, className, context);
-        ExtendedIterator superClassItr = ontClass.listSuperClasses(true);
-        List<String> restrictions = new ArrayList<String>();
-        while( superClassItr.hasNext() ){
-                OntClass c = (OntClass) superClassItr.next();
-
-                if( c.isRestriction() ){
-                    Restriction r = c.as(Restriction.class);
-                    restrictions.add( r.getOnProperty().getLocalName() );
-                }
-        }
-
-        Gson gsn = new Gson();
-        Type listType = new TypeToken<List<String>>() {}.getType();
-        return gsn.toJson( restrictions, listType );
-    }
-
-    private OntClass getClass(String ontologyName, String className, ServletContext context) {
-        OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntModelWrapper ontModelWrapper = ontologyModelStore.getOntologyModel( ontologyName );
-
-        //TODO: Throw appropriate exception and return HTTP code.
-        if( ontModelWrapper == null){
-               System.out.println( ontologyName +  " is not loaded in the server" );
-               return null;
-        }
-        OntModel model = ontModelWrapper.getOntModel();
-        OntClass ontClass = model.getOntClass( ontModelWrapper.getURI() + "#" + className);
-
-        if(ontClass == null){
-            System.out.println( className +  " does not exist in " + ontologyName + " ontology");
-            return null;
-
-        }
-        return ontClass;
-    }
 }

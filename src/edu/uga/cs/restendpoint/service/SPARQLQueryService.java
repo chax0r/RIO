@@ -6,22 +6,14 @@ package edu.uga.cs.restendpoint.service;
 
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.query.*;
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.shared.PrefixMapping;
 import com.hp.hpl.jena.sparql.core.Prologue;
-import edu.uga.cs.restendpoint.utils.OntModelWrapper;
-import edu.uga.cs.restendpoint.utils.OntologyModelStore;
+import edu.uga.cs.restendpoint.model.OntModelWrapper;
+import edu.uga.cs.restendpoint.model.OntologyModelStore;
 
 import javax.servlet.ServletContext;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
