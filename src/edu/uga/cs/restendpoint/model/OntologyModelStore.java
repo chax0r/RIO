@@ -1,17 +1,12 @@
-package edu.uga.cs.restendpoint.utils;
+package edu.uga.cs.restendpoint.model;
 
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntModelSpec;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 
-import javax.servlet.ServletContext;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Created by IntelliJ IDEA.
@@ -27,11 +22,11 @@ public class OntologyModelStore {
         this.ontModelSet = new HashMap<String, OntModelWrapper>( );
     }
 
-    public void populateOntologyStoreFromFile( String fileName, InputStream is, String URI ){
+    public void populateOntologyStoreFromFile( String ontName, InputStream is, String URI ){
             OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
             m.read(is , "");
-            OntModelWrapper ow = new OntModelWrapper(m, "", "");
-            this.ontModelSet.put( fileName, ow);
+            OntModelWrapper ow = new OntModelWrapper(m, URI, ontName);
+            this.ontModelSet.put( ontName, ow);
     }
 
     public void populateOntologyStoreFromURI( List<String> uriList){
@@ -67,4 +62,7 @@ public class OntologyModelStore {
 
     }
 
+    public HashMap<String, OntModelWrapper> getOntModelSet() {
+        return ontModelSet;
+    }
 }

@@ -1,4 +1,4 @@
-package edu.uga.cs.restendpoint.utils;
+package edu.uga.cs.restendpoint.model;
 
 import com.hp.hpl.jena.ontology.OntModel;
 
