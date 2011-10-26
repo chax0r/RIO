@@ -3,8 +3,7 @@ package edu.uga.cs.restendpoint.utils;
 import org.w3c.dom.ranges.Range;
 
 /**
- * Created by IntelliJ IDEA.
- * User: kale
+ * Author: kale
  * Date: 10/17/11
  * Time: 1:44 AM
  * Email: <kale@cs.uga.edu>

@@ -9,10 +9,15 @@ import java.io.IOException;
 import java.util.Properties;
 
 /**
- * Created by IntelliJ IDEA.
- * User: kale
+ * Author: kale
  * Date: 10/6/11
  * Time: 5:54 PM
+ * Email: <kale@cs.uga.edu>
+ */
+/**
+ * Author: kale
+ * Date: 10/16/11
+ * Time: 10:59 PM
  * Email: <kale@cs.uga.edu>
  */
 public class PropertyFileParser {
