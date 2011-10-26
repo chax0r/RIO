@@ -4,6 +4,7 @@ import com.hp.hpl.jena.ontology.*;
 import com.hp.hpl.jena.rdf.model.*;
 import com.hp.hpl.jena.util.iterator.ExtendedIterator;
 import com.sun.tools.jdi.EventSetImpl;
+import edu.uga.cs.restendpoint.model.OntModelWrapper;
 import org.junit.Test;
 
 import java.io.FileInputStream;
@@ -23,6 +24,85 @@ import java.util.logging.Logger;
  * Email: <kale@cs.uga.edu>
  */
 public class NavigationalServiceTest {
+
+    @Test
+    public void testNavigationService(){
+
+        InputStream is = null;
+        OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM_TRANS_INF, null);
+        try{
+            is = new FileInputStream("resources/pizza.owl");
+            model.read(is, "");
+        }catch( FileNotFoundException fe ){
+            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, fe);
+        } catch (IOException e) {
+            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, e);
+        }
+
+        String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
+        OntModelWrapper ontModelWrapper = new OntModelWrapper(model, NS, "pizza" );
+        System.out.println("Output of the test case: ");
+        String testPath = "hasTopping/hasSpiciness";
+        System.out.println( new NavigationalService().executePathQuery(testPath, ontModelWrapper));
+    }
+
+
+    @Test
+    public void testRestrictions(){
+         InputStream is = null;
+        OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM_TRANS_INF, null);
+
+        try{
+            is = new FileInputStream("resources/pizza.owl");
+            model.read(is, "");
+            String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
+            is.close();
+
+            OntClass pizza = model.getOntClass(NS + "#American");
+            OntProperty p = model.getOntProperty(NS + "#hasTopping");
+            ExtendedIterator superClassItr = pizza.listSuperClasses( false );
+            while( superClassItr.hasNext() ){
+                OntClass c = (OntClass) superClassItr.next();
+
+                if( c.isRestriction()){
+                    Restriction r = c.as(Restriction.class);
+                    System.out.println("Restriction on : "+ r.getOnProperty().getLocalName() );
+
+                    if(r.isAllValuesFromRestriction()){
+                        AllValuesFromRestriction allValuesFromRestriction = r.asAllValuesFromRestriction();
+                        Resource res = allValuesFromRestriction.getAllValuesFrom();
+                        System.out.println( "All value restriction: " +res.getLocalName() );
+                    }
+
+                    if( r.isSomeValuesFromRestriction() ){
+                        SomeValuesFromRestriction someValuesFromRestriction = r.asSomeValuesFromRestriction();
+                        Resource res = someValuesFromRestriction.getSomeValuesFrom();
+                        System.out.println( "Some value restriction: " + res.getURI() );
+                    }
+                    if( r.isHasValueRestriction() ){
+
+                            HasValueRestriction hasValueRestriction = r.asHasValueRestriction();
+                            if( hasValueRestriction.getHasValue() != null &&
+                                    hasValueRestriction.getHasValue().isResource()){
+
+                                OntResource res =  hasValueRestriction.getHasValue().asResource().as(OntResource.class);
+                                if( res.isClass() ){
+                                OntClass o = hasValueRestriction.getHasValue().as( OntClass.class );
+                                System.out.println("Has value restriction: " + o.getURI() );
+                                }else {
+                                    System.out.println("Has value restriction is not a class.");
+                                }
+                            }
+                    }
+                }
+            }
+
+        }catch( FileNotFoundException fe ){
+            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, fe);
+        } catch (IOException e) {
+            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, e);
+        }
+    }
 
     @Test
     public void browseClasses(){
