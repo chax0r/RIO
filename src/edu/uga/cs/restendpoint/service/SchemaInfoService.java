@@ -2,7 +2,8 @@ package edu.uga.cs.restendpoint.service;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.Path;
+import javax.ws.rs.*;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.hp.hpl.jena.ontology.*;
@@ -12,32 +13,35 @@ import edu.uga.cs.restendpoint.model.OntologyModelStore;
 import edu.uga.cs.restendpoint.utils.RestOntInterfaceUtil;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
+import org.jboss.resteasy.spi.BadRequestException;
 
 import javax.servlet.ServletContext;
-import javax.ws.rs.GET;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import java.io.PrintWriter;
 import java.lang.reflect.Type;
 import java.util.*;
 /**
- * Created by IntelliJ IDEA.
- * User: kale
+ * Author: kale
  * Date: 10/16/11
  * Time: 10:59 PM
  * Email: <kale@cs.uga.edu>
  */
 
-@Path("/schemainfo")
+@Path("/schemaService")
 public class SchemaInfoService {
 
+    /**
+     * Method to diplay all the ontologies loaded in the system
+     * @param servletContext
+     * @param req
+     * @param res
+     */
     @GET
-    @Path("index")
+    @Path("index.html")
     @Produces("text/html")
-    public void getInfo( @Context ServletContext servletContext,
-                         @Context HttpServletRequest req,
-                         @Context HttpServletResponse res ){
+    public String getInfo(@Context ServletContext servletContext,
+                          @Context HttpServletRequest req,
+                          @Context HttpServletResponse res){
 
         Configuration cfg = null;
         Template template = null;
@@ -65,7 +69,6 @@ public class SchemaInfoService {
             // Build the data-model
             //
             toClient = res.getWriter();
-            dataModel = createAboutTopicDataModel("browser");
             getOntologyDataModel( ontologyModelStore, dataModel );
 
             // Process the template, using the values from the data-model
@@ -80,139 +83,138 @@ public class SchemaInfoService {
         catch( Exception e ) {
             e.printStackTrace( System.err );
         }
+        return "";
     }
 
-    private void  getOntologyDataModel( OntologyModelStore ontologyModelStore, Map<String, Object> dataModel ) {
-        LinkedList< LinkedList<String> > ontologyInfo = new LinkedList<LinkedList<String>>();
-        dataModel.put("ontologyInfo", ontologyInfo);
-        Map<String, OntModelWrapper> ontModelWrapperMap = ontologyModelStore.getOntModelSet();
+//@GET
+//@Path("{ontologyName}/classinfo/{classes:([aA-zZ]+/?[aA-zZ]+)+}")
 
-        for( Map.Entry<String, OntModelWrapper> e : ontModelWrapperMap.entrySet() ){
-                LinkedList< String > ontInfo = new LinkedList<String>();
-                                     ontInfo.add( 0, e.getValue().getOntologyName() );
-                                     ontInfo.add( 1, e.getValue().getURI() );
-                ontologyInfo.add(ontInfo);
+//{classes:[.][,.]*}
+    public String getClassInfo( @PathParam("ontologyName") String ontologyName, @PathParam("classes")String regex){
 
+    System.out.println("Pathsegment path: " + regex);
+/*
+    MultivaluedMap m1 = id.getMatrixParameters();
+    for(Map.Entry<String, List<String>> m: id.getMatrixParameters().entrySet()){
+
+        System.out.println("Key: " + m.getKey());
+
+        for(String k : m.getValue()){
+            System.out.println("Values: " + k);
         }
-    }
 
 
-    private Map<String, Object> createAboutTopicDataModel(String topicName)
-    {
-        Map<String, Object> dataModel = null;
+    }*/
 
-        dataModel = new HashMap<String, Object>();
+    return "";
+}
 
 
-        dataModel.put( "topicname", topicName );
-
-        return dataModel;
-
-    }
-
+    /**
+     * This Method returns the names of all the classes present in the mentioned ontology
+     * @param ontologyName : The ontology whose classes are requested
+     * @param context
+     * @return : Returns a JSON formatted string of all the classes present in the mentioned ontology
+     */
     @GET
     @Path("{ontologyName}/classes")
     public String getAllClasses(@PathParam("ontologyName") String ontologyName,
                                  @Context ServletContext context){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntModelWrapper ontModelWrapper = ontologyModelStore.getOntologyModel( ontologyName );
-
-        //TODO: Throw appropriate exception and return HTTP code.
-        if( ontModelWrapper == null){
-            System.out.println( ontologyName +  " is not loaded in the server" );
-            return "";
-        }
-        OntModel model = ontModelWrapper.getOntModel();
+        OntModel model  = RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName).getOntModel();
         ExtendedIterator classItr =  model.listNamedClasses();
-        List<String> classList = new ArrayList<String>();
+        Set<String> classSet = new HashSet<String>();
         while( classItr.hasNext() ){
             OntClass o = (OntClass) classItr.next();
             if( o.getURI() != null )
-                classList.add( o.getURI() );
+                classSet.add( o.getURI() );
         }
-
-        Gson gsn = new Gson();
-        Type listType = new TypeToken<List<String>>() {}.getType();
-        return gsn.toJson( classList, listType );
+        return RestOntInterfaceUtil.getJSON( classSet, new TypeToken<List<String>>() {}.getType() );
     }
 
+
     @GET
-    @Path("{ontologyName}/{className}/subClasses")
+ //   @Path("{ontologyName}/classinfo/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Path("{ontologyName}/subClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     public String getAllSubClassesOfaClass( @PathParam("ontologyName") String ontologyName,
-                                            @PathParam("className") String className,
+                                            @PathParam("classes") String allClasses,
                                             @Context ServletContext context){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntClass ontClass = RestOntInterfaceUtil.getClass(ontologyName, className, ontologyModelStore);
-        if(ontClass == null){
-            System.out.println( className +  " does not exist in " + ontologyName + " ontology");
-            return "";
 
+        String[] classes = allClasses.split(",");
+        System.out.println("Value of classes: " + allClasses);
+
+        if( classes == null || classes.length == 0){
+            String exp =   " The classes mentioned in the URL are not formatted properly. Please send the classes , separated ";
+            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new BadRequestException(exp) );
+            throw new BadRequestException( exp );
         }
 
-        List<String> subClasses = new ArrayList<String>();
-        ExtendedIterator subClassItr = ontClass.listSubClasses( true );
-
-        while( subClassItr.hasNext() ){
-            OntClass subClass = (OntClass) subClassItr.next();
-            if( subClass.getLocalName() != null )
-                subClasses.add( subClass.getLocalName() );
-
+        Map<String, Set<String>> output = new HashMap<String, Set<String>>();
+        for( String className : classes){
+            System.out.println(className);
+            OntClass ontClass = RestOntInterfaceUtil.
+                    getClass( RestOntInterfaceUtil.getOntModel( ontologyModelStore, ontologyName), className);
+            Set<String> subClasses = RestOntInterfaceUtil.getSubClasses(ontClass);
+            output.put( className, subClasses);
         }
-        Gson gsn = new Gson();
-        Type listType = new TypeToken<List<String>>() {}.getType();
-        return gsn.toJson( subClasses, listType );
+        return RestOntInterfaceUtil.getJSON(output, new TypeToken< Map<String,List<String>> >() {}.getType());
     }
 
 
+
     @GET
-    @Path("{ontologyName}/{className}/superClasses")
+    @Path("{ontologyName}/superClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     public String getAllSuperClassesOfaClass( @PathParam("ontologyName") String ontologyName,
-                                              @PathParam("className") String className,
+                                              @PathParam("classes") String allClasses,
                                               @Context ServletContext context){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntClass ontClass = RestOntInterfaceUtil.getClass(ontologyName, className, ontologyModelStore);
-        if(ontClass == null){
-            System.out.println( className +  " does not exist in " + ontologyName + " ontology");
-            return "";
+        String[] classes = allClasses.split(",");
+        System.out.println("Value of classes: " + allClasses);
 
+        if(classes == null || classes.length == 0){
+            String exp =   " The classes mentioned in the URL are not formatted properly. Please send the classes , separated ";
+            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new BadRequestException(exp) );
+            throw new BadRequestException( exp );
         }
-
-        List<String> superClasses = new ArrayList<String>();
-        ExtendedIterator superClassItr = ontClass.listSuperClasses(true);
-
-        while( superClassItr.hasNext() ){
-            OntClass superClass = (OntClass) superClassItr.next();
-            if( superClass.getLocalName() != null )
-                superClasses.add( superClass.getLocalName() );
-
+        Map<String, Set<String>> output = new HashMap<String, Set<String>>();
+        for( String className : classes){
+            System.out.println(className);
+            OntClass ontClass = RestOntInterfaceUtil.
+                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+            Set<String> superClasses = RestOntInterfaceUtil.getSuperClasses(ontClass);
+            output.put( className, superClasses);
         }
-        Gson gsn = new Gson();
-        Type listType = new TypeToken<List<String>>() {}.getType();
-        return gsn.toJson( superClasses, listType );
+        return RestOntInterfaceUtil.getJSON(output, new TypeToken< Map<String,List<String>> >() {}.getType());
     }
+
 
     @GET
-    @Path("{ontologyName}/{className}/properties")
+    @Path("{ontologyName}/propertiesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     public String getAllPropertiesOfaClass( @PathParam("ontologyName") String ontologyName,
-                                            @PathParam("className") String className,
+                                            @PathParam("classes") String allClasses,
                                             @Context ServletContext context){
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntClass ontClass = RestOntInterfaceUtil.getClass(ontologyName, className, ontologyModelStore);
-
-        ExtendedIterator propItr = ontClass.listDeclaredProperties();
-        List<String> properties = new ArrayList<String>();
-
-        while( propItr.hasNext() ){
-            OntProperty property = (OntProperty) propItr.next();
-            properties.add( property.getLocalName() );
+        String[] classes = allClasses.split(",");
+        System.out.println("Value of classes: " + allClasses);
+        if(classes == null || classes.length == 0){
+            String exp =   " The classes mentioned in the URL are not formatted properly. Please send the classes , separated ";
+            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new BadRequestException(exp) );
+            throw new BadRequestException( exp );
         }
-        Gson gsn = new Gson();
-        Type listType = new TypeToken<List<String>>() {}.getType();
-        return gsn.toJson( properties, listType );
+        Map<String, Set<String>> output = new HashMap<String, Set<String>>();
+        for( String className : classes){
+            OntClass ontClass = RestOntInterfaceUtil.
+                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+            Set<String> properties = RestOntInterfaceUtil.getProperties(ontClass);
+            output.put( className, properties);
+        }
+        return RestOntInterfaceUtil.getJSON(output, new TypeToken< Map<String,List<String>> >() {}.getType());
     }
+
 
     @GET
     @Path("{ontologyName}/{className}/restrictionValues")
@@ -220,7 +222,8 @@ public class SchemaInfoService {
                                                 @PathParam("className") String className,
                                                 @Context ServletContext context){
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntClass ontClass = RestOntInterfaceUtil.getClass(ontologyName, className, ontologyModelStore);
+        OntClass ontClass = RestOntInterfaceUtil.
+                getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
         ExtendedIterator superClassItr = ontClass.listSuperClasses(true);
         Map<String, List<String>> restrictionValueMap = new HashMap<String, List<String>>();
         while( superClassItr.hasNext() ){
@@ -290,7 +293,8 @@ public class SchemaInfoService {
                                               @PathParam("className") String className,
                                               @Context ServletContext context){
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntClass ontClass =RestOntInterfaceUtil. getClass(ontologyName, className, ontologyModelStore);
+        OntClass ontClass = RestOntInterfaceUtil.
+                getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
         ExtendedIterator superClassItr = ontClass.listSuperClasses(true);
         Set<String> restrictions = new HashSet<String>();
         while( superClassItr.hasNext() ){
@@ -302,9 +306,8 @@ public class SchemaInfoService {
             }
         }
 
-        Gson gsn = new Gson();
-        Type setType = new TypeToken<Set<String>>() {}.getType();
-        return gsn.toJson( restrictions, setType );
+        return  RestOntInterfaceUtil.getJSON(restrictions, new TypeToken<Set<String>>() {
+        }.getType());
     }
 
     @GET
@@ -314,20 +317,12 @@ public class SchemaInfoService {
                                              @Context ServletContext context){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntClass ontClass = RestOntInterfaceUtil.getClass(ontologyName, className, ontologyModelStore);
-        ExtendedIterator individualItr = ontClass.listInstances();
-        Set<String> individuals = new HashSet<String>();
-
-        while( individualItr.hasNext() ){
-            Individual ind = (Individual) individualItr.next();
-            if( ind.getOntClass().getLocalName() != null ){
-                individuals.add( ind.getOntClass().getLocalName() );
-            }
-        }
-        Gson gsn = new Gson();
-        Type setType = new TypeToken<Set<String>>() {}.getType();
-        return gsn.toJson( individuals, setType );
+        OntClass ontClass = RestOntInterfaceUtil.
+                getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+        Set<String> individuals = RestOntInterfaceUtil.getIndividuals(ontClass);
+        return  RestOntInterfaceUtil.getJSON( individuals, new TypeToken<Set<String>>() {}.getType());
     }
+
 
     @GET
     @Path("{ontologyName}/enumeratedClasses")
@@ -335,19 +330,13 @@ public class SchemaInfoService {
                                            @Context ServletContext context ){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntModel model = ontologyModelStore.getOntologyModel( ontologyName ).getOntModel();
-        if(model == null ){
-            System.out.println(ontologyName + " is not loaded in the server");
-            return "";
-        }
+        OntModel model = RestOntInterfaceUtil.getOntModel( ontologyModelStore, ontologyName ).getOntModel();
         Set<String> enumClassSet = new HashSet<String>();
         ExtendedIterator enumItr =  model.listEnumeratedClasses();
         while( enumItr.hasNext() ){
             enumClassSet.add( ( (EnumeratedClass) enumItr.next() ).as( OntClass.class ).getLocalName() );
         }
-        Gson gsn = new Gson();
-        Type setType = new TypeToken<Set<String>>() {}.getType();
-        return gsn.toJson( enumClassSet, setType );
+        return  RestOntInterfaceUtil.getJSON( enumClassSet, new TypeToken<Set<String>>() {}.getType());
 
     }
 
@@ -357,11 +346,7 @@ public class SchemaInfoService {
                                            @Context ServletContext context ){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntModel model = ontologyModelStore.getOntologyModel( ontologyName ).getOntModel();
-        if(model == null ){
-            System.out.println(ontologyName + " is not loaded in the server");
-            return "";
-        }
+        OntModel model = RestOntInterfaceUtil.getOntModel( ontologyModelStore, ontologyName ).getOntModel();
         Map<String, Set<String>> enumInstanceMap = new HashMap<String, Set<String>>();
         ExtendedIterator enumItr =  model.listEnumeratedClasses();
         while( enumItr.hasNext() ){
@@ -385,19 +370,136 @@ public class SchemaInfoService {
                                                  @Context ServletContext context ){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-        OntClass enumOntClass = RestOntInterfaceUtil.getClass( ontologyName, enumClass, ontologyModelStore);
+        OntClass enumOntClass = RestOntInterfaceUtil.
+                getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), enumClass);
         if( !enumOntClass.isEnumeratedClass() ){
-            System.out.println( enumClass + " is not an enumerated class");
-            return "";
+            String exp =  enumClass + " is not an enumerated class in " + ontologyName + " ontology ";
+            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new BadRequestException(exp) );
+            throw new BadRequestException( exp );
         }
         Set<String> enumClassSet = new HashSet<String>();
         ExtendedIterator enumItr =  enumOntClass.as(EnumeratedClass.class).listOneOf();
         while( enumItr.hasNext() ){
             enumClassSet.add( ( (EnumeratedClass) enumItr.next() ).as( OntClass.class ).getLocalName() );
         }
-        Gson gsn = new Gson();
-        Type setType = new TypeToken<Set<String>>() {}.getType();
-        return gsn.toJson( enumClassSet, setType );
+        return RestOntInterfaceUtil.getJSON( enumClassSet, new TypeToken<Set<String>>() {}.getType());
+    }
 
+    @GET
+    @Path("{ontologyName}/{propertyName}/domain")
+    public String getDomainOfProperty( @PathParam("ontologyName") String ontologyName,
+                                                 @PathParam("propertyName") String propertyName,
+                                                 @Context ServletContext context){
+        OntModelWrapper ontModelWrapper = RestOntInterfaceUtil.getOntModel( (OntologyModelStore)context.getAttribute("ontologyModelStore"), ontologyName );
+        OntProperty ontProperty = ontModelWrapper.getOntModel().getOntProperty( ontModelWrapper.getURI() + "#" + propertyName);
+
+        if( ontProperty == null){
+            String exp =  propertyName + " does not exist in " + ontologyName + " ontology ";
+            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new BadRequestException(exp) );
+            throw new BadRequestException( exp );
+        }
+
+        String domain = ontProperty.getDomain().getURI();
+        Gson gsn = new Gson();
+        return gsn.toJson( domain );
+    }
+
+
+    @DELETE
+    @Path("{ontologyName}/subClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    public String deleteSubClasses( @PathParam("ontologyName") String ontologyName,
+                                            @PathParam("classes") String allClasses,
+                                            @Context ServletContext context){
+
+        OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
+
+        String[] classes = allClasses.split(",");
+        System.out.println("Value of classes: " + allClasses);
+
+        if( classes == null || classes.length == 0){
+            String exp =   " The classes mentioned in the URL are not formatted properly. Please send the classes , separated ";
+            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new BadRequestException(exp) );
+            throw new BadRequestException( exp );
+        }
+
+        Set<OntClass> subClassSet = new HashSet<OntClass>();
+        for( String className : classes){
+            System.out.println(className);
+            OntClass ontClass = RestOntInterfaceUtil.
+                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+            ExtendedIterator subClassItr = ontClass.listSubClasses( true );
+
+             while( subClassItr.hasNext() ){
+                    OntClass subClass = (OntClass) subClassItr.next();
+                    if( subClass.getLocalName() != null )
+                        subClassSet.add( subClass );
+             }
+        }
+
+        deleteClasses( subClassSet );
+        return "";
+    }
+
+@DELETE
+    @Path("{ontologyName}/superClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    public String deleteSuperClasses( @PathParam("ontologyName") String ontologyName,
+                                            @PathParam("classes") String allClasses,
+                                            @Context ServletContext context){
+
+        OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
+
+        String[] classes = allClasses.split(",");
+        System.out.println("Value of classes: " + allClasses);
+
+        if( classes == null || classes.length == 0){
+            String exp =   " The classes mentioned in the URL are not formatted properly. Please send the classes , separated ";
+            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new BadRequestException(exp) );
+            throw new BadRequestException( exp );
+        }
+
+        Set<OntClass> subClassSet = new HashSet<OntClass>();
+        for( String className : classes){
+            System.out.println(className);
+            OntClass ontClass = RestOntInterfaceUtil.
+                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+            ExtendedIterator subClassItr = ontClass.listSuperClasses( true );
+
+             while( subClassItr.hasNext() ){
+                    OntClass subClass = (OntClass) subClassItr.next();
+                    if( subClass.getLocalName() != null )
+                        subClassSet.add( subClass );
+             }
+        }
+
+        deleteClasses( subClassSet );
+        return "";
+    }
+
+    private void deleteClasses(Set<OntClass> subClassSet) {
+
+        for (OntClass ontClass : subClassSet) {
+            ontClass.remove();
+        }
+    }
+
+
+    /**
+     * Method to create Freemarker Datamodel for displaying.
+     * @param ontologyModelStore : the ontologyModelStore object reference
+     * @param dataModel: DataModel that has to be written to the outputStream
+     */
+    private void  getOntologyDataModel( OntologyModelStore ontologyModelStore, Map<String, Object> dataModel ) {
+
+        LinkedList< LinkedList<String> > ontologyInfo = new LinkedList<LinkedList<String>>();
+        dataModel.put("ontologyInfo", ontologyInfo);
+        Map<String, OntModelWrapper> ontModelWrapperMap = ontologyModelStore.getOntModelSet();
+
+        for( Map.Entry<String, OntModelWrapper> e : ontModelWrapperMap.entrySet() ){
+                LinkedList< String > ontInfo = new LinkedList<String>();
+                                     ontInfo.add( 0, e.getValue().getOntologyName() );
+                                     ontInfo.add( 1, e.getValue().getURI() );
+                ontologyInfo.add(ontInfo);
+
+        }
     }
 }
