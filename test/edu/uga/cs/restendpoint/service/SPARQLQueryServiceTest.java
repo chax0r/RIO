@@ -68,7 +68,7 @@ public class SPARQLQueryServiceTest {
 	public void executeQuery(){
 		InputStream is = null;
 		try {
-                is = new FileInputStream("src/resources/pizza.owl");
+            is = new FileInputStream("src/resources/pizza.owl");
             OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
             String source = "http://www.co-ode.org/ontologies/pizza/ ";
 			model.read(is, "");
