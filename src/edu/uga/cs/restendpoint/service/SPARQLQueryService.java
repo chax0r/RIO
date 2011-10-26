@@ -16,8 +16,10 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 
 /**
- *
- * @author kale
+ * Author: kale
+ * Date: 10/16/11
+ * Time: 10:59 PM
+ * Email: <kale@cs.uga.edu>
  */
 
 //TODO: 1) Exception Handling
