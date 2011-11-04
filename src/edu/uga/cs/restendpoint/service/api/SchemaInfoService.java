@@ -30,65 +30,78 @@ public interface SchemaInfoService {
      */
     @GET
     @Path("{ontologyName}/classes")
+    @Produces("application/json")
     String getAllClasses(@PathParam("ontologyName") String ontologyName,
                                  @Context ServletContext context);
     @GET
  //   @Path("{ontologyName}/classinfo/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     @Path("{ontologyName}/subClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/json")
     String getAllSubClassesOfaClass( @PathParam("ontologyName") String ontologyName,
                                             @PathParam("classes") String allClasses,
                                             @Context ServletContext context);
 
     @GET
     @Path("{ontologyName}/superClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/json")
     String getAllSuperClassesOfaClass( @PathParam("ontologyName") String ontologyName,
                                               @PathParam("classes") String allClasses,
                                               @Context ServletContext context);
     @GET
     @Path("{ontologyName}/propertiesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/json")
     public String getAllPropertiesOfaClass( @PathParam("ontologyName") String ontologyName,
                                             @PathParam("classes") String allClasses,
                                             @Context ServletContext context);
     @GET
     @Path("{ontologyName}/{className}/restrictionValues")
+    @Produces("application/json")
     public String getRestrictionValuesOnaClass( @PathParam("ontologyName") String ontologyName,
                                                 @PathParam("className") String className,
                                                 @Context ServletContext context);
     @GET
     @Path("{ontologyName}/{className}/restrictions")
+    @Produces("application/json")
     public String getAllRestrictionsONaClass( @PathParam("ontologyName") String ontologyName,
                                               @PathParam("className") String className,
                                               @Context ServletContext context);
     @GET
     @Path("{ontologyName}/{className}/individuals")
+    @Produces("application/json")
     public String getAllInstancesOfClass(  @PathParam("ontologyName") String ontologyName,
                                              @PathParam("className") String className,
                                              @Context ServletContext context);
     @GET
     @Path("{ontologyName}/enumeratedClasses")
+    @Produces("application/json")
     public String getAllEnumeratedClasses( @PathParam("ontologyName") String ontologyName,
                                            @Context ServletContext context );
     @GET
     @Path("{ontologyName}/enumeratedClassInstances")
+    @Produces("application/json")
     public String getAllEnumeratedClassInstances( @PathParam("ontologyName") String ontologyName,
                                                   @Context ServletContext context );
     @GET
     @Path("{ontologyName}/{enumClass}/enumIndividuals")
+    @Produces("application/json")
     public String getInstancesOfEnumeratedClass( @PathParam("ontologyName") String ontologyName,
                                                  @PathParam("enumClass") String enumClass,
                                                  @Context ServletContext context );
     @GET
     @Path("{ontologyName}/{propertyName}/domain")
+    @Produces("application/json")
     public String getDomainOfProperty( @PathParam("ontologyName") String ontologyName,
                                        @PathParam("propertyName") String propertyName,
                                        @Context ServletContext context);
     @DELETE
     @Path("{ontologyName}/subClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/json")
     public String deleteSubClasses( @PathParam("ontologyName") String ontologyName,
                                     @PathParam("classes") String allClasses,
                                     @Context ServletContext context);
     @DELETE
     @Path("{ontologyName}/superClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/json")
     public String deleteSuperClasses( @PathParam("ontologyName") String ontologyName,
                                       @PathParam("classes") String allClasses,
                                       @Context ServletContext context);
