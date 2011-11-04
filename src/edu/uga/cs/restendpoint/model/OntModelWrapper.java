@@ -3,8 +3,7 @@ package edu.uga.cs.restendpoint.model;
 import com.hp.hpl.jena.ontology.OntModel;
 
 /**
- * Created by IntelliJ IDEA.
- * User: kale
+ * Author: kale
  * Date: 10/16/11
  * Time: 12:18 AM
  * Email: <kale@cs.uga.edu>
