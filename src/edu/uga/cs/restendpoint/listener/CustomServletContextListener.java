@@ -8,6 +8,7 @@ package edu.uga.cs.restendpoint.listener;
  */
 
 import edu.uga.cs.restendpoint.model.OntologyModelStore;
+import edu.uga.cs.restendpoint.model.SparqlQueryResultStore;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
@@ -67,6 +68,10 @@ public class CustomServletContextListener implements ServletContextListener,
                 }
             }
             sc.setAttribute( "ontologyModelStore", ontologyModelStore);
+
+            Map<String, SparqlQueryResultStore> sparqlQueryResultStoreMap = new HashMap<String, SparqlQueryResultStore>();
+            sc.setAttribute("sparqlQueryResultStoreMap", sparqlQueryResultStoreMap);
+
         } catch (ConfigurationException e) {
             Logger.getLogger(CustomServletContextListener.class.getName()).log(Level.SEVERE, null, e);
         }
