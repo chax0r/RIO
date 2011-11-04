@@ -1,4 +1,4 @@
-package edu.uga.cs.restendpoint.service;
+package edu.uga.cs.restendpoint.service.impl;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -10,6 +10,7 @@ import com.hp.hpl.jena.ontology.*;
 import com.hp.hpl.jena.util.iterator.ExtendedIterator;
 import edu.uga.cs.restendpoint.model.OntModelWrapper;
 import edu.uga.cs.restendpoint.model.OntologyModelStore;
+import edu.uga.cs.restendpoint.service.api.SchemaInfoService;
 import edu.uga.cs.restendpoint.utils.RestOntInterfaceUtil;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
@@ -17,6 +18,7 @@ import org.jboss.resteasy.spi.BadRequestException;
 
 import javax.servlet.ServletContext;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.PathSegment;
 import java.io.PrintWriter;
 import java.lang.reflect.Type;
 import java.util.*;
@@ -27,8 +29,7 @@ import java.util.*;
  * Email: <kale@cs.uga.edu>
  */
 
-@Path("/schemaService")
-public class SchemaInfoService {
+public class SchemaInfoServiceImpl implements SchemaInfoService {
 
     /**
      * Method to diplay all the ontologies loaded in the system
@@ -36,12 +37,9 @@ public class SchemaInfoService {
      * @param req
      * @param res
      */
-    @GET
-    @Path("index.html")
-    @Produces("text/html")
-    public String getInfo(@Context ServletContext servletContext,
-                          @Context HttpServletRequest req,
-                          @Context HttpServletResponse res){
+    public String getInfo( ServletContext servletContext,
+                           HttpServletRequest req,
+                           HttpServletResponse res){
 
         Configuration cfg = null;
         Template template = null;
@@ -69,6 +67,7 @@ public class SchemaInfoService {
             // Build the data-model
             //
             toClient = res.getWriter();
+            dataModel = new HashMap<String, Object>();
             getOntologyDataModel( ontologyModelStore, dataModel );
 
             // Process the template, using the values from the data-model
@@ -86,13 +85,17 @@ public class SchemaInfoService {
         return "";
     }
 
-//@GET
+@GET
 //@Path("{ontologyName}/classinfo/{classes:([aA-zZ]+/?[aA-zZ]+)+}")
+@Path("{ontologyName}/classinfo/{classes:.+}")
 
 //{classes:[.][,.]*}
-    public String getClassInfo( @PathParam("ontologyName") String ontologyName, @PathParam("classes")String regex){
+    public String getClassInfo( @PathParam("ontologyName") String ontologyName, @PathParam("classes")List<PathSegment> regex){
 
-    System.out.println("Pathsegment path: " + regex);
+    for (PathSegment pathSegment : regex) {
+        System.out.println(pathSegment.getPath());
+    }
+
 /*
     MultivaluedMap m1 = id.getMatrixParameters();
     for(Map.Entry<String, List<String>> m: id.getMatrixParameters().entrySet()){
@@ -116,10 +119,8 @@ public class SchemaInfoService {
      * @param context
      * @return : Returns a JSON formatted string of all the classes present in the mentioned ontology
      */
-    @GET
-    @Path("{ontologyName}/classes")
-    public String getAllClasses(@PathParam("ontologyName") String ontologyName,
-                                 @Context ServletContext context){
+    public String getAllClasses( String ontologyName,
+                                 ServletContext context){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
         OntModel model  = RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName).getOntModel();
@@ -134,12 +135,9 @@ public class SchemaInfoService {
     }
 
 
-    @GET
- //   @Path("{ontologyName}/classinfo/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    @Path("{ontologyName}/subClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    public String getAllSubClassesOfaClass( @PathParam("ontologyName") String ontologyName,
-                                            @PathParam("classes") String allClasses,
-                                            @Context ServletContext context){
+    public String getAllSubClassesOfaClass( String ontologyName,
+                                            String allClasses,
+                                            ServletContext context){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
 
@@ -156,7 +154,7 @@ public class SchemaInfoService {
         for( String className : classes){
             System.out.println(className);
             OntClass ontClass = RestOntInterfaceUtil.
-                    getClass( RestOntInterfaceUtil.getOntModel( ontologyModelStore, ontologyName), className);
+                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
             Set<String> subClasses = RestOntInterfaceUtil.getSubClasses(ontClass);
             output.put( className, subClasses);
         }
@@ -165,11 +163,9 @@ public class SchemaInfoService {
 
 
 
-    @GET
-    @Path("{ontologyName}/superClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    public String getAllSuperClassesOfaClass( @PathParam("ontologyName") String ontologyName,
-                                              @PathParam("classes") String allClasses,
-                                              @Context ServletContext context){
+    public String getAllSuperClassesOfaClass( String ontologyName,
+                                              String allClasses,
+                                              ServletContext context){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
         String[] classes = allClasses.split(",");
@@ -192,11 +188,9 @@ public class SchemaInfoService {
     }
 
 
-    @GET
-    @Path("{ontologyName}/propertiesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    public String getAllPropertiesOfaClass( @PathParam("ontologyName") String ontologyName,
-                                            @PathParam("classes") String allClasses,
-                                            @Context ServletContext context){
+    public String getAllPropertiesOfaClass( String ontologyName,
+                                            String allClasses,
+                                            ServletContext context){
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
         String[] classes = allClasses.split(",");
         System.out.println("Value of classes: " + allClasses);
@@ -216,11 +210,9 @@ public class SchemaInfoService {
     }
 
 
-    @GET
-    @Path("{ontologyName}/{className}/restrictionValues")
-    public String getRestrictionValuesOnaClass( @PathParam("ontologyName") String ontologyName,
-                                                @PathParam("className") String className,
-                                                @Context ServletContext context){
+    public String getRestrictionValuesOnaClass( String ontologyName,
+                                                String className,
+                                                ServletContext context){
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
         OntClass ontClass = RestOntInterfaceUtil.
                 getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
@@ -287,11 +279,9 @@ public class SchemaInfoService {
     }
 
 
-    @GET
-    @Path("{ontologyName}/{className}/restrictions")
-    public String getAllRestrictionsONaClass( @PathParam("ontologyName") String ontologyName,
-                                              @PathParam("className") String className,
-                                              @Context ServletContext context){
+    public String getAllRestrictionsONaClass( String ontologyName,
+                                              String className,
+                                              ServletContext context){
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
         OntClass ontClass = RestOntInterfaceUtil.
                 getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
@@ -310,11 +300,9 @@ public class SchemaInfoService {
         }.getType());
     }
 
-    @GET
-    @Path("{ontologyName}/{className}/individuals")
-    public String getAllIndividualsOfClass(  @PathParam("ontologyName") String ontologyName,
-                                             @PathParam("className") String className,
-                                             @Context ServletContext context){
+    public String getAllInstancesOfClass(  String ontologyName,
+                                           String className,
+                                           ServletContext context){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
         OntClass ontClass = RestOntInterfaceUtil.
@@ -324,10 +312,8 @@ public class SchemaInfoService {
     }
 
 
-    @GET
-    @Path("{ontologyName}/enumeratedClasses")
-    public String getAllEnumeratedClasses( @PathParam("ontologyName") String ontologyName,
-                                           @Context ServletContext context ){
+    public String getAllEnumeratedClasses( String ontologyName,
+                                            ServletContext context ){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
         OntModel model = RestOntInterfaceUtil.getOntModel( ontologyModelStore, ontologyName ).getOntModel();
@@ -340,10 +326,8 @@ public class SchemaInfoService {
 
     }
 
-    @GET
-    @Path("{ontologyName}/enumeratedClassInstances")
-    public String getAllEnumeratedClassInstances( @PathParam("ontologyName") String ontologyName,
-                                           @Context ServletContext context ){
+    public String getAllEnumeratedClassInstances( String ontologyName,
+                                                  ServletContext context ){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
         OntModel model = RestOntInterfaceUtil.getOntModel( ontologyModelStore, ontologyName ).getOntModel();
@@ -363,11 +347,9 @@ public class SchemaInfoService {
         return gsn.toJson( enumInstanceMap, mapType );
     }
 
-    @GET
-    @Path("{ontologyName}/{enumClass}/enumIndividuals")
-    public String getInstancesOfEnumeratedClass( @PathParam("ontologyName") String ontologyName,
-                                                 @PathParam("enumClass") String enumClass,
-                                                 @Context ServletContext context ){
+    public String getInstancesOfEnumeratedClass( String ontologyName,
+                                                 String enumClass,
+                                                  ServletContext context ){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
         OntClass enumOntClass = RestOntInterfaceUtil.
@@ -385,11 +367,9 @@ public class SchemaInfoService {
         return RestOntInterfaceUtil.getJSON( enumClassSet, new TypeToken<Set<String>>() {}.getType());
     }
 
-    @GET
-    @Path("{ontologyName}/{propertyName}/domain")
-    public String getDomainOfProperty( @PathParam("ontologyName") String ontologyName,
-                                                 @PathParam("propertyName") String propertyName,
-                                                 @Context ServletContext context){
+    public String getDomainOfProperty( String ontologyName,
+                                       String propertyName,
+                                        ServletContext context){
         OntModelWrapper ontModelWrapper = RestOntInterfaceUtil.getOntModel( (OntologyModelStore)context.getAttribute("ontologyModelStore"), ontologyName );
         OntProperty ontProperty = ontModelWrapper.getOntModel().getOntProperty( ontModelWrapper.getURI() + "#" + propertyName);
 
@@ -405,11 +385,9 @@ public class SchemaInfoService {
     }
 
 
-    @DELETE
-    @Path("{ontologyName}/subClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    public String deleteSubClasses( @PathParam("ontologyName") String ontologyName,
-                                            @PathParam("classes") String allClasses,
-                                            @Context ServletContext context){
+    public String deleteSubClasses( String ontologyName,
+                                    String allClasses,
+                                    ServletContext context){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
 
@@ -440,11 +418,9 @@ public class SchemaInfoService {
         return "";
     }
 
-@DELETE
-    @Path("{ontologyName}/superClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    public String deleteSuperClasses( @PathParam("ontologyName") String ontologyName,
-                                            @PathParam("classes") String allClasses,
-                                            @Context ServletContext context){
+    public String deleteSuperClasses( String ontologyName,
+                                      String allClasses,
+                                      ServletContext context){
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
 
@@ -462,7 +438,7 @@ public class SchemaInfoService {
             System.out.println(className);
             OntClass ontClass = RestOntInterfaceUtil.
                     getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
-            ExtendedIterator subClassItr = ontClass.listSuperClasses( true );
+            ExtendedIterator subClassItr = ontClass.listSuperClasses(true);
 
              while( subClassItr.hasNext() ){
                     OntClass subClass = (OntClass) subClassItr.next();
