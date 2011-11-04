@@ -9,8 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 
 /**
- * Created by IntelliJ IDEA.
- * User: kale
+ * Author: kale
  * Date: 10/6/11
  * Time: 5:54 PM
  * Email: <kale@cs.uga.edu>
@@ -23,7 +22,7 @@ public class OntologyModelStore {
     }
 
     public void populateOntologyStoreFromFile( String ontName, InputStream is, String URI ){
-            OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
+            OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM_TRANS_INF, null);
             m.read(is , "");
             OntModelWrapper ow = new OntModelWrapper(m, URI, ontName);
             this.ontModelSet.put( ontName, ow);
@@ -32,7 +31,7 @@ public class OntologyModelStore {
     public void populateOntologyStoreFromURI( List<String> uriList){
 
         for( String uri : uriList ){
-            OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
+            OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM_TRANS_INF, null);
             m.read(uri , "");
             OntModelWrapper ow = new OntModelWrapper(m, "", "");
             this.ontModelSet.put( uri, ow);
@@ -44,7 +43,7 @@ public class OntologyModelStore {
      */
     public void addOntologyModel( String uri ){
 
-        OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
+        OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM_TRANS_INF, null);
                  m.read( uri, "");
         OntModelWrapper ow = new OntModelWrapper(m, "", "");
         this.ontModelSet.put( uri, ow);
