@@ -19,5 +19,7 @@ public interface RestOntInterfaceConstants {
     String EQUIVALENT = "EQUIVALENT";
     String DOMAIN = "DOMAIN";
     String RANGE = "RANGE";
+    String INSTANCEOF = "INSTANCEOF";
+    String CLASSOF = "CLASSOF";
 
 }
