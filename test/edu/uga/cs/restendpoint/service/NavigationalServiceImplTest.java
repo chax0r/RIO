@@ -3,16 +3,16 @@ package edu.uga.cs.restendpoint.service;
 import com.hp.hpl.jena.ontology.*;
 import com.hp.hpl.jena.rdf.model.*;
 import com.hp.hpl.jena.util.iterator.ExtendedIterator;
-import com.sun.tools.jdi.EventSetImpl;
 import edu.uga.cs.restendpoint.model.OntModelWrapper;
+import org.jdom.Document;
+import org.jdom.Element;
+import org.jdom.JDOMException;
+import org.jdom.input.SAXBuilder;
+import org.jdom.output.Format;
+import org.jdom.output.XMLOutputter;
 import org.junit.Test;
-
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Iterator;
-import java.util.List;
+import java.io.*;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  * Time: 12:07 PM
  * Email: <kale@cs.uga.edu>
  */
-public class NavigationalServiceTest {
+public class NavigationalServiceImplTest {
 
     @Test
     public void testNavigationService(){
@@ -34,16 +34,32 @@ public class NavigationalServiceTest {
             is = new FileInputStream("resources/pizza.owl");
             model.read(is, "");
         }catch( FileNotFoundException fe ){
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, fe);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
         } catch (IOException e) {
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);
         }
 
         String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
         OntModelWrapper ontModelWrapper = new OntModelWrapper(model, NS, "pizza" );
-        System.out.println("Output of the test case: ");
+      /*  System.out.println("Output of the test case: ");
         String testPath = "hasTopping/hasSpiciness";
-        System.out.println( new NavigationalService().executePathQuery(testPath, ontModelWrapper));
+        Set<OntResource> ontResources = new HashSet<OntResource>();
+        ontResources.add( model.getOntClass( NS + "#" + "American").as( OntResource.class ) );
+        System.out.println( new NavigationalServiceImpl().executePathQuery( ontModelWrapper, null, ontResources, true) );*/
+
+        Individual american = model.getIndividual( NS + "#" + "American");
+        Individual america = model.getIndividual( NS + "#" + "America");
+        Individual prop = model.getIndividual(NS + "#" + "hasTopping");
+        System.out.println("can america casted as ontclass: " + america.isClass() );
+        System.out.println("can america casted as ind: " + america.isIndividual() );
+        System.out.println("can american casted as ontclass: " + american.isIndividual());
+        System.out.println(prop.isIndividual());
+
+        //OntClass cls = model.getOntClass(NS + "#" + "America");
+
+        //System.out.println("IS it null " + ind.getOntClass().getLocalName());
+
+        //System.out.println( new NavigationalServiceImpl().navigateOntologyClasses());
     }
 
 
@@ -98,9 +114,9 @@ public class NavigationalServiceTest {
             }
 
         }catch( FileNotFoundException fe ){
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, fe);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
         } catch (IOException e) {
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);
         }
     }
 
@@ -337,9 +353,9 @@ public class NavigationalServiceTest {
        //     }
             is.close();
         }catch( FileNotFoundException fe ){
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, fe);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
         } catch (IOException e) {
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);
         }
 
     }
@@ -384,10 +400,10 @@ public class NavigationalServiceTest {
 
 
         }catch( FileNotFoundException fe){
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, fe);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
         }   catch (IOException e){
 
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);
         }
     }
 
@@ -430,10 +446,10 @@ public class NavigationalServiceTest {
             /*while( stmItr.hasNext() ){
             } */
         }catch( FileNotFoundException fe){
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, fe);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
         }   catch (IOException e){
 
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);
         }
     }
 
@@ -441,7 +457,7 @@ public class NavigationalServiceTest {
     @Test
     public void testPeople(){
 
-        String [] a = {"1", "2", "3"};
+        /*String [] a = {"1", "2", "3"};
         String [] b = new String[a.length-1];
         System.arraycopy( a, 1, b, 0, a.length -1);
 
@@ -454,7 +470,19 @@ public class NavigationalServiceTest {
         System.out.println("Array b: ");
         for (String s : b) {
             System.out.println(s);
-        }
+        } */
+
+        System.out.println( Thread.currentThread().hashCode() );
+
+        Thread t1 = new Thread();
+        Thread t2 = new Thread();
+
+        Map<Thread, String> threadMap = new HashMap<Thread, String>();
+        threadMap.put( t1, "ankur");
+        threadMap.put(t2, "ck");
+
+        System.out.println(threadMap.get(t1));
+        System.out.println(threadMap.get(t2));
        // InputStream is = null;
        // OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
        // String NS = "http://owl.man.ac.uk/2006/07/sssw/people";
@@ -468,10 +496,10 @@ public class NavigationalServiceTest {
              //   System.out.println(parentItr.next().toString());
            // }
        /* }catch( FileNotFoundException fe){
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, fe);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
         }   catch (IOException e){
 
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);
         }*/
     }
 
@@ -517,11 +545,180 @@ public class NavigationalServiceTest {
                 }
             }
         }catch( FileNotFoundException fe){
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, fe);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
         }   catch (IOException e){
 
-            Logger.getLogger( NavigationalServiceTest.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);
         }
 
+    }
+
+      @Test
+    public void testMineProperty(){
+        InputStream is = null;
+        OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_DL_MEM_TRANS_INF);
+        try{
+            is = new FileInputStream("resources/pizza.owl");
+            model.read(is, "");
+            String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
+            OntClass americanPizza = model.getOntClass(NS + "#American");
+
+            ExtendedIterator propItr = americanPizza.listDeclaredProperties();
+            while( propItr.hasNext() ){
+                OntProperty p = (OntProperty) propItr.next();
+                System.out.println( p.getLocalName() );
+
+            }
+            }catch( FileNotFoundException fe){
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
+        }   catch (IOException e){
+
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);
+        }
+
+    }
+
+    @Test
+    public void testXMLOutput(){
+        InputStream is = null;
+        OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_DL_MEM_TRANS_INF);
+        try{
+            is = new FileInputStream("resources/pizza.owl");
+            model.read(is, "");
+            String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
+            OntClass ontClass = model.getOntClass(NS + "#American");
+
+            OntProperty p;
+
+
+            Element root = new Element("Classes");
+            Document doc = new Document( root );
+            Element classElem = new Element("Class");
+            classElem.setAttribute("name", ontClass.getLocalName());
+            classElem.setAttribute("uri", ontClass.getURI());
+            root.addContent(classElem);
+
+
+            Element subClassRoot = new Element("SubClasses");
+            ExtendedIterator<OntClass> subClassItr = ontClass.listSubClasses( true );
+            while( subClassItr.hasNext() ){
+                OntClass cls = subClassItr.next();
+                if( cls.getLocalName() != null && cls.getURI() != null ){
+                    Element subClassElem = new Element("Class");
+                    subClassElem.setAttribute("name", cls.getLocalName());
+                    subClassElem.setAttribute("uri", cls.getURI());
+                    subClassRoot.addContent(subClassElem);
+                }
+            }
+            Element superClassRoot = new Element("SuperClasses");
+            ExtendedIterator<OntClass> superClassItr = ontClass.listSuperClasses(true);
+            while( superClassItr.hasNext() ){
+                OntClass cls = superClassItr.next();
+                if( cls.getLocalName() != null && cls.getURI() !=null ){
+                    Element superClassElem = new Element("Class");
+                    superClassElem.setAttribute("name", cls.getLocalName());
+                    superClassElem.setAttribute("uri", cls.getURI());
+                    superClassRoot.addContent(superClassElem);
+                }
+            }
+            Element instancesClassRoot = new Element("Instances");
+            ExtendedIterator<? extends OntResource> instanceItr = ontClass.listInstances( true );
+            while( instanceItr.hasNext() ){
+                OntResource instance = instanceItr.next();
+                if( instance.getLocalName()!=null && instance.getURI()!=null){
+                    Element instanceElem = new Element("Instance");
+                    instanceElem.setAttribute("name", instance.getLocalName());
+                    instanceElem.setAttribute("uri", instance.getURI());
+                     instancesClassRoot.addContent(instanceElem);
+                }
+            }
+
+            classElem.addContent(subClassRoot);
+            classElem.addContent(superClassRoot);
+            classElem.addContent(instancesClassRoot);
+
+
+            XMLOutputter outputter = new XMLOutputter(Format.getPrettyFormat());
+            System.out.println( outputter.outputString( doc ));
+
+
+        }catch( FileNotFoundException fe){
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
+        }   catch (IOException e){
+
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);
+        }
+
+    }
+
+    @Test
+    public void testReadXML() throws JDOMException {
+        InputStream is = null;
+        OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_DL_MEM_TRANS_INF);
+        try{
+            is = new FileInputStream("resources/pizza.owl");
+            model.read(is, "");
+            String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
+             OntClass ontClass1 = model.getOntClass(NS + "#AmericanHot");
+            ExtendedIterator<OntClass> superClasses1 = ontClass1.listSuperClasses(true);
+            while( superClasses1.hasNext() ){
+                System.out.println( superClasses1.next().getURI() );
+            }
+
+            StringBuilder xmlInput = new StringBuilder();
+            xmlInput.append("<Classes><Class name=\"AmericanHot\" uri=\"").append(NS + "#AmericanHot\">");
+            xmlInput.append("<SuperClasses><SuperClass name=\"NamedPizza\" uri=\""+NS+"#NamedPizza\">");
+            xmlInput.append("<update name=\"American\" uri=\"" +NS+"#American\"/>");
+            xmlInput.append("</SuperClass></SuperClasses></Class></Classes>");
+           // System.out.println(xmlInput.toString());
+            FileOutputStream fs = new FileOutputStream("test.xml");
+            fs.write(xmlInput.toString().getBytes());
+            SAXBuilder builder = new SAXBuilder();
+            Document inputDoc = builder.build( new FileInputStream("test.xml") );
+            Element classRoot = inputDoc.getRootElement();
+            List<Element> classChild = classRoot.getChildren();
+            System.out.println("Root : " + classRoot );
+            for( Element ce : classChild ){
+
+                String classUri = ce.getAttribute("uri").getValue();
+                OntClass aClass = model.getOntClass( classUri );
+                System.out.println("Class to modify: " + classUri);
+                List<Element> superClasses = ce.getChild("SuperClasses").getChildren();
+                System.out.println("************ size : " + superClasses.size());
+                for(Element s : superClasses ){
+                    System.out.println(" ***************  " + s.toString());
+                        //System.out.println(superClass.getAttribute("name") + " --- " + superClass.getAttribute("uri"));
+                        String uri = s.getAttribute("uri").getValue();
+                        System.out.println(uri);
+
+                        Element update = s.getChild("update");
+                        String updateUri = update.getAttribute("uri").getValue();
+                        System.out.println(updateUri);
+                        OntClass cClass = model.getOntClass(uri);
+                        OntClass uClass = model.getOntClass( updateUri );
+                        aClass.removeSuperClass(cClass );
+                        aClass.addSuperClass( uClass );
+
+
+
+
+
+                }
+            }
+
+            System.out.println("********** Now *************");
+            OntClass ontClass = model.getOntClass(NS + "#AmericanHot");
+            ExtendedIterator<OntClass> superClasses = ontClass.listSuperClasses(true);
+            while( superClasses.hasNext() ){
+                System.out.println( superClasses.next().getURI() );
+            }
+
+
+
+         }catch( FileNotFoundException fe){
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
+        }   catch (IOException e){
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);
+        }
     }
 }
