@@ -9,9 +9,9 @@ import org.w3c.dom.ranges.Range;
  * Email: <kale@cs.uga.edu>
  */
 public interface RestOntInterfaceConstants {
-    String SUPERCLASS = "SUPERCLASS";
-    String SUBCLASS = "SUBCLASS";
-    String INSTANCE = "INSTANCE";
+    String SUPERCLASS = "SuperClass";
+    String SUBCLASS = "SubClass";
+    String INSTANCE = "Instance";
     String DISJOINT = "DISJOINT";
     String UNION = "UNION";
     String INTERSECTION = "INTERSECTION";
@@ -21,5 +21,24 @@ public interface RestOntInterfaceConstants {
     String RANGE = "RANGE";
     String INSTANCEOF = "INSTANCEOF";
     String CLASSOF = "CLASSOF";
+
+    String URI = "uri";
+    String NAME = "name";
+    String CLASSES = "Classes";
+    String CLASS = "Class";
+    String INSTANCES = "Instances";
+    String SUPERCLASSES = "SuperClasses";
+    String SUBCLASSES = "SubClasses";
+    String UPDATE = "Update";
+
+    String PROPERTY = "Property";
+    String PROPERTIES = "Properties";
+    String SUBPROPERTIES = "SubProperties";
+    String SUBPROPERTY = "SubProperty";
+    String SUPERPROPERTIES = "SuperProperties";
+    String SUPERPROPERTY = "SuperProperty";
+
+    String COMMA_DELIMITER = ",";
+
 
 }
