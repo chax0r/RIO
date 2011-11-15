@@ -3,21 +3,16 @@ package edu.uga.cs.restendpoint.service.impl;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.hp.hpl.jena.ontology.*;
-import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.util.iterator.ExtendedIterator;
 import edu.uga.cs.restendpoint.model.OntModelWrapper;
 import edu.uga.cs.restendpoint.model.OntologyModelStore;
 import edu.uga.cs.restendpoint.service.api.NavigationalService;
 import edu.uga.cs.restendpoint.utils.RestOntInterfaceConstants;
 import edu.uga.cs.restendpoint.utils.RestOntInterfaceUtil;
-import org.jboss.resteasy.spi.BadRequestException;
-import sun.jvm.hotspot.oops.Array;
+import edu.uga.cs.restendpoint.exceptions.NotFoundException;
 
 import javax.servlet.ServletContext;
-import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.PathSegment;
 import java.lang.reflect.Type;
 import java.util.*;
@@ -29,7 +24,7 @@ import java.util.*;
  * Email: <kale@cs.uga.edu>
  */
 @Path("/navigate")
-public class NavigationalServiceImpl implements NavigationalService {
+public abstract class NavigationalServiceImpl implements NavigationalService {
 
     public String navigateOntologyClasses( String ontologyName,
                                     List<PathSegment> associationsQuery,
@@ -37,27 +32,31 @@ public class NavigationalServiceImpl implements NavigationalService {
 
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
         OntModelWrapper modelWrapper = RestOntInterfaceUtil.getOntModel( ontologyModelStore, ontologyName);
-        System.out.println("Path query: " + associationsQuery );
+        RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), "Path query: " + associationsQuery  );
         //String[] path = associationsQuery.split("/");
         Set<OntResource> initResources = new HashSet<OntResource>();
         OntClass ontClass = modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() + "#" + associationsQuery.get(0) );
         if( ontClass != null ){
-            initResources.add( ontClass.as(OntResource.class) );
+            initResources.add( ontClass );
             associationsQuery = associationsQuery.subList(1, associationsQuery.size() );
         }else{
             OntProperty ontProperty = modelWrapper.getOntModel().getOntProperty( modelWrapper.getURI() + "#" + associationsQuery.get(0) );
             if( ontProperty != null ){
 
-                ExtendedIterator classItr = ontProperty.listDeclaringClasses(false);
+                ExtendedIterator <? extends OntClass> classItr = ontProperty.listDeclaringClasses(false);
                 while( classItr.hasNext() ){
-                    OntClass cls = (OntClass) classItr.next();
+                    OntClass cls =  classItr.next();
                     if( cls.getURI() != null ){
-                        initResources.add( cls.as(OntResource.class) );
+                        initResources.add( cls );
                     }
                 }
 
             }else{
-                //TODO: Throw exception
+                StringBuilder exp = new StringBuilder();
+                exp.append( associationsQuery.get(0) ).append(" is neither a property or class in ").append(modelWrapper.getOntologyName());
+                exp.append(" ontology ").append(" nor a supported keyword.");
+                RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp.toString()) );
+                throw new NotFoundException( exp.toString() );
             }
         }
         return executePathQuery( modelWrapper, associationsQuery, initResources, true);
@@ -83,12 +82,12 @@ public class NavigationalServiceImpl implements NavigationalService {
 
             if( !initIndividual.isIndividual() ){
                 String exp =  associationsQuery.get(0) + "is not an instance in " + modelWrapper.getOntologyName() + " ontology";
-                RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new BadRequestException(exp) );
-                throw new BadRequestException( exp );
+                RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+                throw new NotFoundException( exp );
 
             }
 
-            initResources.add( initIndividual.as(OntResource.class) );
+            initResources.add( initIndividual );
             associationsQuery = associationsQuery.subList(1, associationsQuery.size() );
 
         }else{
@@ -98,17 +97,20 @@ public class NavigationalServiceImpl implements NavigationalService {
                                                                                               getOntologyModel(ontologyName).
                                                                                               getURI() + "#" + associationsQuery.get(0)  );
               if( initProperty == null ){
-                  //TODO: throw exception;
-                  return "";
+                  StringBuilder exp = new StringBuilder();
+                  exp.append( associationsQuery.get(0) ).append(" is neither a property or instance in ").append(modelWrapper.getOntologyName());
+                  exp.append(" ontology ").append(" nor a supported keyword.");
+                  RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp.toString()) );
+                  throw new NotFoundException( exp.toString() );
               }else{
                   //Get all the classes that declare this property.
                   //From the classes, get all the individuals
-                 ExtendedIterator classItr =  initProperty.listDeclaringClasses( false );
+                 ExtendedIterator <? extends OntClass> classItr =  initProperty.listDeclaringClasses( false );
                  while ( classItr.hasNext() ){
-                    ExtendedIterator indItr =  ( (OntClass) classItr.next() ).listInstances( false );
+                    ExtendedIterator <? extends OntResource> indItr =  classItr.next().listInstances( false );
 
                     while( indItr.hasNext() )
-                        initResources.add( ( (Individual)indItr.next() ).as( OntResource.class) );
+                        initResources.add( indItr.next() );
                  }
               }
         }
@@ -119,12 +121,6 @@ public class NavigationalServiceImpl implements NavigationalService {
     public String executePathQuery( OntModelWrapper modelWrapper,
                                     List<PathSegment> path, Set<OntResource> interimResults, Boolean areClasses) {
 
-      /*  for (String s : path) {
-            System.out.println(s);
-        }*/
-
-
-
       //  Set<OntClass> interimClasses = getInitialClasses( modelWrapper, path[0]);
 
         for( PathSegment association : path){
@@ -132,8 +128,9 @@ public class NavigationalServiceImpl implements NavigationalService {
             if( RestOntInterfaceConstants.SUPERCLASS.compareToIgnoreCase( association.getPath() ) == 0 ){
 
                 if( areClasses.equals( false )){
-                    //TODO: throw exception
-                    return "";
+                    String exp =  "Cannot navigate using 'superclass' keyword when navigating through instances " ;
+                    RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+                    throw new NotFoundException( exp );
                 }
 
                 Set<OntResource> result = getAllSuperClass(interimResults);
@@ -146,8 +143,9 @@ public class NavigationalServiceImpl implements NavigationalService {
             }else if( RestOntInterfaceConstants.SUBCLASS.compareToIgnoreCase( association.getPath() ) == 0 ){
 
                 if( areClasses.equals( false )){
-                    //TODO: throw exception
-                    return "";
+                    String exp =  "Cannot navigate using 'subclass' keyword when navigating through instances " ;
+                    RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+                    throw new NotFoundException( exp );
                 }
                 Set<OntResource> result = getAllSubClass( interimResults );
                 if( result == null || result.isEmpty()){
@@ -160,8 +158,9 @@ public class NavigationalServiceImpl implements NavigationalService {
             }else if( RestOntInterfaceConstants.EQUIVALENT.compareToIgnoreCase( association.getPath() ) == 0 ){
 
                 if( areClasses.equals( false )){
-                    //TODO: throw exception
-                    return "";
+                    String exp =  "Cannot navigate using 'equivalent' keyword when navigating through instances " ;
+                    RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+                    throw new NotFoundException( exp );
                 }
                 Set<OntResource> result = getEquivalentClass( interimResults );
                 if( result == null || result.isEmpty()){
@@ -174,8 +173,9 @@ public class NavigationalServiceImpl implements NavigationalService {
             }else if( RestOntInterfaceConstants.DISJOINT.compareToIgnoreCase( association.getPath() ) == 0 ){
 
                 if( areClasses.equals( false )){
-                    //TODO: throw exception
-                    return "";
+                    String exp =  "Cannot navigate using 'disjoint' keyword when navigating through instances " ;
+                    RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+                    throw new NotFoundException( exp );
                 }
                 Set<OntResource> result = getDisjointClass(interimResults);
                 if( result == null || result.isEmpty()){
@@ -188,13 +188,14 @@ public class NavigationalServiceImpl implements NavigationalService {
             }else if( RestOntInterfaceConstants.INSTANCEOF.compareToIgnoreCase( association.getPath() ) == 0){
 
                 if( areClasses.equals( false ) ){
-                    //TODO: throw exception
-                    return "";
+                    String exp =  "Cannot navigate using 'instanceOf' keyword when navigating through instances " ;
+                    RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+                    throw new NotFoundException( exp );
                 }
                 areClasses = false;
                 Set<OntResource> result = getIndividuals( interimResults);
                 if( result == null || result.isEmpty()){
-                    System.out.println("Results of " + association + " were empty .........");
+                    RestOntInterfaceUtil.log(RestOntInterfaceUtil.class.getName(), "Results of " + association + " were empty .........");
                     return convertToJson(interimResults);
                 }
                 interimResults.clear();
@@ -202,13 +203,14 @@ public class NavigationalServiceImpl implements NavigationalService {
 
             }else if( RestOntInterfaceConstants.CLASSOF.compareToIgnoreCase( association.getPath() ) == 0){
                 if( areClasses.equals( true )){
-                    //TODO: throw exception
-                    return "";
+                    String exp =  "Cannot navigate using 'classOf' keyword when navigating through classes " ;
+                    RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+                    throw new NotFoundException( exp );
                 }
                 areClasses = true;
                 Set<OntResource> result = getClassesOf(interimResults);
                 if( result == null || result.isEmpty()){
-                    System.out.println("Results of " + association + " were empty .........");
+                    RestOntInterfaceUtil.log(RestOntInterfaceUtil.class.getName(), "Results of " + association + " were empty .........");
                     return convertToJson(interimResults);
                 }
                 interimResults.clear();
@@ -220,9 +222,11 @@ public class NavigationalServiceImpl implements NavigationalService {
                                                             "#" + association);
 
                     if( ontProperty == null ){
-                        String exp =  association + "is not present in " + modelWrapper.getOntologyName() + " ontology";
-                        RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new BadRequestException(exp) );
-                        throw new BadRequestException( exp );
+                        StringBuilder exp = new StringBuilder();
+                        exp.append( association ).append(" is neither a property in ").append(modelWrapper.getOntologyName());
+                        exp.append(" ontology ").append(" nor a supported keyword.");
+                        RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp.toString()) );
+                        throw new NotFoundException( exp.toString() );
                     }
 
                     Set<OntClass>ontClassSet = new HashSet<OntClass>();
@@ -233,24 +237,26 @@ public class NavigationalServiceImpl implements NavigationalService {
                     }else{
 
                         for( OntResource r : interimResults){
-                            ontClassSet.add( r.as(Individual.class).getOntClass() );
+                            ExtendedIterator <OntClass> ontClsItr = r.as( Individual.class ).listOntClasses( true );
+                            while ( ontClsItr.hasNext() )
+                                ontClassSet.add( ontClsItr.next() );
                         }
                     }
                     Set<OntClass> result = processProperty( ontClassSet, ontProperty );
                     if( result == null || result.isEmpty()){
-                        System.out.println("Results of " + association + " were empty .........");
+                        RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), "Results of " + association + " were empty ........." );
                         return convertToJson(interimResults);
                     }else{
                         interimResults.clear();
                         if( areClasses ){
                             for( OntClass cls : result){
-                                interimResults.add( cls.as( OntResource.class) );
+                                interimResults.add( cls );
                             }
                         }else {
                             for( OntClass cls : result){
-                                ExtendedIterator indItr = cls.listInstances( true );
+                                ExtendedIterator <? extends OntResource> indItr = cls.listInstances( true );
                                 while ( indItr.hasNext() ){
-                                    interimResults.add( ( (Individual)indItr.next() ).as( OntResource.class ) );
+                                    interimResults.add(indItr.next());
                                 }
 
                             }
@@ -287,9 +293,9 @@ public class NavigationalServiceImpl implements NavigationalService {
             OntProperty ontProperty = modelWrapper.getOntModel().getOntProperty( modelWrapper.getURI() + "#" + association );
             if( ontProperty != null ){
 
-                ExtendedIterator classItr = ontProperty.listDeclaringClasses(false);
+                ExtendedIterator <? extends  OntClass> classItr = ontProperty.listDeclaringClasses(false);
                 while( classItr.hasNext() ){
-                    OntClass cls = (OntClass) classItr.next();
+                    OntClass cls =  classItr.next();
                     if( cls.getURI() != null ){
                         ontClassSet.add( cls );
                     }
@@ -332,9 +338,9 @@ public class NavigationalServiceImpl implements NavigationalService {
     private Set<OntClass> find(OntClass cls, OntProperty association) {
 
          Set<OntClass> resultClasses = new HashSet<OntClass>();
-         ExtendedIterator superClassItr = cls.listSuperClasses( false );
+         ExtendedIterator <OntClass> superClassItr = cls.listSuperClasses( false );
             while( superClassItr.hasNext() ){
-                OntClass c = (OntClass) superClassItr.next();
+                OntClass c =  superClassItr.next();
 
                 if( c.isRestriction()){
                     Restriction r = c.as(Restriction.class);
@@ -384,9 +390,9 @@ public class NavigationalServiceImpl implements NavigationalService {
       Set<OntResource> classes = new HashSet<OntResource>();
 
       for( OntResource res : interimResults ){
-          ExtendedIterator classItr = res.as( Individual.class ).listOntClasses( true );
+          ExtendedIterator <OntClass> classItr = res.as( Individual.class ).listOntClasses( true );
           while ( classItr.hasNext() ){
-              classes.add( ( (OntClass)classItr.next() ).as(OntResource.class) );
+              classes.add(  classItr.next().as(OntResource.class) );
           }
       }
       return classes;
@@ -396,9 +402,9 @@ public class NavigationalServiceImpl implements NavigationalService {
         Set<OntResource> individuals = new HashSet<OntResource>();
 
         for( OntResource res : interimResults ){
-            ExtendedIterator indItr = res.as( OntClass.class ).listInstances( true );
+            ExtendedIterator <? extends OntResource> indItr = res.as( OntClass.class ).listInstances( true );
             while( indItr.hasNext() ){
-                individuals.add( ( (Individual)indItr.next() ).as(OntResource.class) );
+                individuals.add( indItr.next() );
             }
         }
         return individuals;
@@ -408,9 +414,9 @@ public class NavigationalServiceImpl implements NavigationalService {
 
         Set<OntResource> ontClasses = new HashSet<OntResource>();
         for( OntResource ontClass : ontClassSet ){
-            ExtendedIterator classItr = ontClass.as(OntClass.class).listDisjointWith();
+            ExtendedIterator <OntClass> classItr = ontClass.as(OntClass.class).listDisjointWith();
             while( classItr.hasNext() ){
-                ontClasses.add( ( (OntClass)classItr.next() ).as(OntResource.class) );
+                ontClasses.add( classItr.next() );
             }
         }
         return ontClasses;
@@ -420,9 +426,9 @@ public class NavigationalServiceImpl implements NavigationalService {
 
         Set<OntResource> ontClasses = new HashSet<OntResource>();
         for( OntResource ontClass : ontClassSet){
-            ExtendedIterator classItr = ontClass.as( OntClass.class ).listEquivalentClasses();
+            ExtendedIterator <OntClass>classItr = ontClass.as( OntClass.class ).listEquivalentClasses();
             while( classItr.hasNext() ){
-                ontClasses.add( ( (OntClass) classItr.next() ).as(OntResource.class) );
+                ontClasses.add(classItr.next());
             }
         }
         return ontClasses;
@@ -431,12 +437,12 @@ public class NavigationalServiceImpl implements NavigationalService {
   private Set<OntResource> getAllSubClass( Set<OntResource> ontClassSet ) {
 
         Set<OntResource> ontClasses = new HashSet<OntResource>();
-        for( OntResource ontClass : ontClassSet){
+        for( OntResource resource : ontClassSet){
 
-            ExtendedIterator subClassItr = ontClass.as(OntClass.class).listSubClasses(false);
+            ExtendedIterator <OntClass> subClassItr = resource.as(OntClass.class).listSubClasses(false);
 
             while( subClassItr.hasNext() ){
-                ontClasses.add( ( (OntClass) subClassItr.next() ).as(OntResource.class) );
+                ontClasses.add( subClassItr.next()  );
             }
         }
         return ontClasses;
@@ -445,12 +451,12 @@ public class NavigationalServiceImpl implements NavigationalService {
   private Set<OntResource> getAllSuperClass( Set<OntResource> ontClassSet ) {
         Set<OntResource> ontClasses = new HashSet<OntResource>();
 
-        for( OntResource ontClass : ontClassSet ){
+        for( OntResource resource : ontClassSet ){
 
-            ExtendedIterator superClassItr = ontClass.as(OntClass.class).listSuperClasses(false);
+            ExtendedIterator <OntClass> superClassItr = resource.as(OntClass.class).listSuperClasses(false);
 
             while( superClassItr.hasNext() ){
-                ontClasses.add( ((OntClass) superClassItr.next()).as(OntResource.class) );
+                ontClasses.add( superClassItr.next() );
             }
         }
         return ontClasses;
