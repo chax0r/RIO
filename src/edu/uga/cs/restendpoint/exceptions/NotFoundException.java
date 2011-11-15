@@ -1,4 +1,4 @@
-package exceptions;
+package edu.uga.cs.restendpoint.exceptions;
 
 /**
  * Created by IntelliJ IDEA.

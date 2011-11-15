@@ -1,6 +1,6 @@
-package exceptions.mappers;
+package edu.uga.cs.restendpoint.exceptions.mappers;
 
-import exceptions.NotFoundException;
+import edu.uga.cs.restendpoint.exceptions.NotFoundException;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
@@ -20,5 +20,6 @@ public class NotFoundExceptionMapper implements ExceptionMapper<NotFoundExceptio
       return Response.status(Response.Status.NOT_FOUND)
               .entity(exception.getMessage())
               .type("text/plain").build();
+
    }
 }
