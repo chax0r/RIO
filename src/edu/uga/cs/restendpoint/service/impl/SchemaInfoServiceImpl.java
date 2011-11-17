@@ -343,9 +343,9 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
                       throw new BadRequestException( exp );
                 }
 
-                OntClass newClass = RestOntInterfaceUtil.getClass( modelWrapper, classLocalName, true ) ;
+                OntClass newClass = modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + classLocalName) ;
 
-                if( classElement.getChild( RestOntInterfaceConstants.SUPERCLASSES) != null){
+                if( classElement.getChild( RestOntInterfaceConstants.SUBCLASSES) != null){
 
                     List<Element> subClassElementList = classElement.getChild( RestOntInterfaceConstants.SUBCLASSES ).getChildren();
                     for( Element subClassElement : subClassElementList ){
@@ -362,7 +362,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
                     }
                 }
 
-                if( classElement.getChild( RestOntInterfaceConstants.SUPERCLASS) != null ){
+                if( classElement.getChild( RestOntInterfaceConstants.SUPERCLASSES ) != null ){
                     List<Element> superClassElementList = classElement.getChild( RestOntInterfaceConstants.SUPERCLASSES ).getChildren();
                     for( Element superClassElement : superClassElementList ){
 
@@ -916,7 +916,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
                             if( subClass == null ){
                                 subClass = modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + subClassName );
                             }
-                         ontClass.addSubClass( subClass);
+                         ontClass.addSuperClass( subClass);
                     }
                 }else{
 
@@ -1892,6 +1892,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
                     String exp =   subClassName + " does not exists in the  " + modelWrapper.getOntologyName() + " ontology ";
                     RestOntInterfaceUtil.log(SchemaInfoService.class.getName(), new BadRequestException(exp));
                     throw new BadRequestException( exp );
+
 
                 //Validate if the subClass has the relation subClassOf with the class that we are updating.
                 } else if ( ! updateClass.hasSubClass( subClass ) ){
