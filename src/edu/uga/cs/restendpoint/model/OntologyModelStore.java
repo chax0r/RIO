@@ -22,7 +22,9 @@ public class OntologyModelStore {
     }
 
     public void populateOntologyStoreFromFile( String ontName, InputStream is, String URI ){
-            OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM_TRANS_INF, null);
+        //May use OWL_DL_MEM_TRANS_INF
+            OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
+        //OntModel m = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM_TRANS_INF, null);
             m.read(is , "");
             OntModelWrapper ow = new OntModelWrapper(m, URI, ontName);
             this.ontModelSet.put( ontName, ow);
