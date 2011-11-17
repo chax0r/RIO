@@ -10,7 +10,12 @@ import edu.uga.cs.restendpoint.service.api.NavigationalService;
 import edu.uga.cs.restendpoint.utils.RestOntInterfaceConstants;
 import edu.uga.cs.restendpoint.utils.RestOntInterfaceUtil;
 import edu.uga.cs.restendpoint.exceptions.NotFoundException;
+import org.jdom.Document;
+import org.jdom.Element;
+import org.jdom.output.Format;
+import org.jdom.output.XMLOutputter;
 
+import javax.annotation.Resource;
 import javax.servlet.ServletContext;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.PathSegment;
@@ -23,8 +28,7 @@ import java.util.*;
  * Time: 12:10 AM
  * Email: <kale@cs.uga.edu>
  */
-@Path("/navigate")
-public abstract class NavigationalServiceImpl implements NavigationalService {
+public  class NavigationalServiceImpl implements NavigationalService {
 
     public String navigateOntologyClasses( String ontologyName,
                                     List<PathSegment> associationsQuery,
@@ -265,9 +269,57 @@ public abstract class NavigationalServiceImpl implements NavigationalService {
             }
         }
 
-        return convertToJson(interimResults);
+       // return convertToJson(interimResults);
+       return convertToXML (interimResults );
     }
 
+    private String convertToXML(Set<OntResource> interimResults) {
+
+        if( interimResults == null || interimResults.isEmpty() ){
+            return " No class or instance resulted after execution of the navigational query. ";
+        }else if (interimResults.iterator().next().canAs( OntClass.class ) ) {
+           return  convertOntClassToXML( interimResults );
+
+        }else{
+           return  convertIndividualsToXML (interimResults );
+        }
+
+    }
+
+    private String convertIndividualsToXML(Set<OntResource> interimResults) {
+        Element root = new Element( RestOntInterfaceConstants.INSTANCES );
+        Document doc = new Document( root );
+
+        for( OntResource res : interimResults ){
+            if( res.getLocalName() != null & res.getURI() != null ){
+                Element classElem = new Element( RestOntInterfaceConstants.INSTANCES );
+                classElem.setAttribute( RestOntInterfaceConstants.NAME, res.getLocalName() ).
+                        setAttribute( RestOntInterfaceConstants.URI, res.getURI() );
+                root.addContent( classElem );
+            }
+
+        }
+
+        return new XMLOutputter( Format.getPrettyFormat() ).outputString( doc );
+    }
+
+    private String convertOntClassToXML(Set< OntResource> interimResults) {
+
+        Element root = new Element( RestOntInterfaceConstants.CLASSES );
+        Document doc = new Document( root );
+
+        for( OntResource res : interimResults ){
+            if( res.getLocalName() != null & res.getURI() != null ){
+                Element classElem = new Element( RestOntInterfaceConstants.CLASS );
+                classElem.setAttribute( RestOntInterfaceConstants.NAME, res.getLocalName() ).
+                        setAttribute( RestOntInterfaceConstants.URI, res.getURI() );
+                root.addContent( classElem );
+            }
+
+        }
+
+        return new XMLOutputter( Format.getPrettyFormat() ).outputString( doc );
+    }
 
 
     /*

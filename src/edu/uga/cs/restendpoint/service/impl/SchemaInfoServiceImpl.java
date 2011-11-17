@@ -9,6 +9,7 @@ import com.google.gson.reflect.TypeToken;
 import com.hp.hpl.jena.ontology.*;
 import com.hp.hpl.jena.sparql.resultset.XMLOutput;
 import com.hp.hpl.jena.util.iterator.ExtendedIterator;
+import com.hp.hpl.jena.util.iterator.Filter;
 import edu.uga.cs.restendpoint.exceptions.BadRequestException;
 import edu.uga.cs.restendpoint.model.OntModelWrapper;
 import edu.uga.cs.restendpoint.model.OntologyModelStore;
@@ -222,7 +223,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         Set<OntClass> ontClasses = new HashSet<OntClass>( classesArray.length );
         for( String className : classesArray){
                 OntClass ontClass = RestOntInterfaceUtil.
-                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true );
                 ontClasses.add( ontClass );
         }
 
@@ -270,7 +271,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
             }
 
             Element propertiesRoot = new Element( RestOntInterfaceConstants.PROPERTIES );
-            ExtendedIterator<OntProperty> propItr = ontClass.listDeclaredProperties( true );
+            ExtendedIterator<OntProperty> propItr = ontClass.listDeclaredProperties( false );
             while( propItr.hasNext() ){
                 OntProperty prop = propItr.next();
                 if(prop.getURI()!= null && prop.getLocalName() != null ){
@@ -313,7 +314,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
 
         if( classesArray == null || classesArray.length == 0){
             String exp =   " The classes mentioned in the URL are not formatted properly. Please send the classes , separated ";
-            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+            RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new NotFoundException(exp) );
             throw new NotFoundException( exp );
         }
 
@@ -325,31 +326,35 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
 
             if( classesRoot == null ){
                 String exp =   " The request body is not in correct format. ";
-                RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
-                throw new NotFoundException( exp );
+                RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new NotFoundException(exp) );
+                throw new BadRequestException( exp );
             }
 
             List<Element> childElements = classesRoot.getChildren();
             for( Element classElement : childElements){
 
+                validateNameAttribute(classElement, " The Class tag does not have name attribute. ");
+
                 String classLocalName = classElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
 
-                if( modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() +"#" + classLocalName ) != null ){
+                if( RestOntInterfaceUtil.getClass( modelWrapper, classLocalName, false ) != null ){
                       String exp =   classLocalName + " already exists in the  " + modelWrapper.getOntologyName() + " ontology ";
                       RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
                       throw new BadRequestException( exp );
                 }
 
-                OntClass newClass = modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + classLocalName );
+                OntClass newClass = RestOntInterfaceUtil.getClass( modelWrapper, classLocalName, true ) ;
 
                 if( classElement.getChild( RestOntInterfaceConstants.SUPERCLASSES) != null){
 
                     List<Element> subClassElementList = classElement.getChild( RestOntInterfaceConstants.SUBCLASSES ).getChildren();
                     for( Element subClassElement : subClassElementList ){
 
+                        validateNameAttribute(subClassElement, " The SubClass tag does not have name attribute. ");
+
                         String subClassName = subClassElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
 
-                        OntClass subClass = modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() + "#" + subClassName);
+                        OntClass subClass = RestOntInterfaceUtil.getClass( modelWrapper, subClassName,false );
                         if( subClass == null ){
                             subClass = modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + subClassName );
                         }
@@ -361,37 +366,41 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
                     List<Element> superClassElementList = classElement.getChild( RestOntInterfaceConstants.SUPERCLASSES ).getChildren();
                     for( Element superClassElement : superClassElementList ){
 
-                        String subClassName = superClassElement.getAttribute(RestOntInterfaceConstants.NAME).getValue();
+                        validateNameAttribute(superClassElement, " The SuperClass tag does not have name attribute. ");
 
-                        OntClass superClass = modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() + "#" + subClassName);
+                        String superClassName = superClassElement.getAttribute(RestOntInterfaceConstants.NAME).getValue();
+
+                        OntClass superClass = RestOntInterfaceUtil.getClass( modelWrapper, superClassName, false );
 
                         if( superClass == null ){
-                            superClass = modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + subClassName );
+                            superClass = modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + superClassName );
                         }
                         newClass.addSuperClass( superClass );
-
                     }
                 }
 
-                if( classElement.getChild( RestOntInterfaceConstants.INSTANCES) == null ){
+                if( classElement.getChild( RestOntInterfaceConstants.INSTANCES) != null ){
+
                     List<Element> instanceElementList = classElement.getChild( RestOntInterfaceConstants.INSTANCES ).getChildren();
-                    for( Element instancesElement : instanceElementList ){
+                    for( Element instanceElement : instanceElementList ){
 
-                        String instanceName = instancesElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
+                        validateNameAttribute(instanceElement, " The Instance tag does not have name attribute. ");
 
-                        Individual instance = modelWrapper.getOntModel().getIndividual( modelWrapper.getURI() + "#" + instanceName);
+                        String instanceName = instanceElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
+
+                        Individual instance = RestOntInterfaceUtil.getIndividual( modelWrapper, instanceName, false);
                         if( instance == null ){
 
                             newClass.createIndividual( modelWrapper.getURI() + "#" + instanceName);
 
-                        } else if( !instance.isIndividual() ){
+                        } /*else if( !instance.isIndividual() ){
 
                             String exp =   instanceName + " does not exist in the  " + modelWrapper.getOntologyName() + " ontology ";
                                  exp = exp + " and there is other individual with the same name present .";
                             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
                             throw new BadRequestException( exp );
 
-                         }else{
+                         }*/else{
 
                             String exp =   instanceName + " already exists in the  " + modelWrapper.getOntologyName() + " ontology ";
                             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
@@ -411,12 +420,12 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
                         }
                 }*/
             }
-
-
         } catch (JDOMException e) {
             RestOntInterfaceUtil.log(SchemaInfoService.class.getName(), e);
+            throw new BadRequestException( "There was a problem while parsing the request body.");
         } catch (IOException e) {
             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+            throw new BadRequestException( "There was a problem while parsing the request body.");
         }
 
         return "";
@@ -454,15 +463,17 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
             List<Element> childElements = classesRoot.getChildren();
             for( Element classElement : childElements){
 
+                validateNameAttribute(classElement, " The Class tag does not have name attribute. ");
+
                 String classLocalName = classElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
 
-                if( modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() +"#" + classLocalName ) == null ){
+               /* if( modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() +"#" + classLocalName ) == null ){
                       String exp =   classLocalName + " does not exists in the  " + ontologyName + " ontology ";
                       RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
                       throw new BadRequestException( exp );
-                }
+                }*/
 
-                OntClass updateClass = modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + classLocalName );
+                OntClass updateClass = RestOntInterfaceUtil.getClass( modelWrapper, classLocalName, true);
 
                 if( classElement.getChild( RestOntInterfaceConstants.SUBCLASSES) != null ){
 
@@ -484,23 +495,25 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
                     List<Element> instanceElementList = classElement.getChild( RestOntInterfaceConstants.INSTANCES ).getChildren();
                     for( Element instancesElement : instanceElementList ){
 
+                        validateNameAttribute( instancesElement, " The Instance tag does not have name attribute. ");
+
                         //Get the name of the instance that has to be update
                         String instanceName = instancesElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
 
                         //Validate if it exist in the ontology
-                        Individual individual = modelWrapper.getOntModel().getIndividual( modelWrapper.getURI() + "#" + instanceName);
+                        Individual individual = RestOntInterfaceUtil.getIndividual( modelWrapper, instanceName, false);
 
                         //If the individual does not exist in the ontology throw an exception : 400 BadRequest
                         if( individual == null ){
 
                             String exp =   instanceName + "  does not exists in the  " + modelWrapper.getOntologyName() + " ontology ";
-                            RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
-                            throw new BadRequestException( exp );
+                            RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new NotFoundException( exp ));
+                            throw new NotFoundException( exp );
 
-                            //Validate if the subClass has the relation subClassOf with the class that we are updating.
+                            //Validate if the individual has the relation instanceOf with the class that we are updating.
                         } else if ( ! individual.isIndividual()  || !individual.hasOntClass( updateClass )){
 
-                            //If it is not a subClass throw exception: 400 BadRequest
+                            //If it is not an instance of the class throw exception: 400 BadRequest
                             String exp =   instanceName + " is  not  an instance of "+ classLocalName +
                                     " the  " + modelWrapper.getOntologyName() + " ontology ";
                             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
@@ -513,6 +526,15 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
 
                             String exp = "The Instance tag doesn't have an Update tag";
                             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
+                            throw new BadRequestException( exp );
+
+                        }
+
+                        if( instancesElement.getChild( RestOntInterfaceConstants.UPDATE ).
+                                getAttribute(RestOntInterfaceConstants.NAME) == null ){
+
+                            String exp =   " The Update tag does not have name attribute. ";
+                            RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new NotFoundException(exp) );
                             throw new BadRequestException( exp );
 
                         }
@@ -531,7 +553,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
 
                         //Check if the class mentioned in update tag exists in the ontology, if not throw exception: 400 BadRequest
                         //OntClass updateSubClass = modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() + "#" + instanceName);
-                        Individual updateInstance = modelWrapper.getOntModel().getIndividual( modelWrapper.getURI() + "#" + updateInstanceName);
+                        Individual updateInstance = RestOntInterfaceUtil.getIndividual( modelWrapper, updateInstanceName, false );
                         if( updateInstance != null ){
                             String exp = updateInstanceName + " is already present in  " + modelWrapper.getOntologyName() + "ontology.";
                             exp = exp + "You need to provide a non-existent instance.";
@@ -561,8 +583,10 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
 
         } catch (JDOMException e) {
             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+                throw new BadRequestException( "There was a problem while parsing the request body.");
         } catch (IOException e) {
             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+                throw new BadRequestException( "There was a problem while parsing the request body.");
         }
 
         return "";
@@ -587,8 +611,9 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         Set<OntClass> ontClasses = new HashSet<OntClass>( classes.length );
         for( String className : classes){
                 OntClass ontClass = RestOntInterfaceUtil.
-                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true);
                 ontClasses.add( ontClass );
+
         }
         Element root = new Element( RestOntInterfaceConstants.CLASSES );
         Document doc = new Document( root );
@@ -601,15 +626,20 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
             Element subClassElemList = new Element( RestOntInterfaceConstants.SUBCLASSES );
             classElem.addContent( subClassElemList);
 
-            ExtendedIterator<OntClass> subClassItr = ontClass.listSubClasses( true );
+            ExtendedIterator<OntClass> subClassItr =
+                    ontClass.listSubClasses( true ).filterDrop( new Filter<OntClass>() {
+                @Override
+                public boolean accept(OntClass o) {
+                    return o.isAnon();
+                }
+            });
+
             while( subClassItr.hasNext() ){
                 OntClass subClass = subClassItr.next();
-                if( subClass.getLocalName() != null && subClass.getURI() != null ){
                     Element subClassElem = new Element( RestOntInterfaceConstants.SUBCLASS );
                     subClassElem.setAttribute(RestOntInterfaceConstants.NAME , subClass.getLocalName() );
                     subClassElem.setAttribute( RestOntInterfaceConstants.URI, subClass.getURI() );
                     subClassElemList.addContent( subClassElem );
-                }
             }
 
         }
@@ -658,20 +688,25 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
             List<Element> childElements = classesRoot.getChildren();
             for( Element classElement : childElements){
 
+                validateNameAttribute(classElement, "The Class tag does not have name attribute");
+
                 String classLocalName = classElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
 
-                if( modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() +"#" + classLocalName ) == null ){
+
+                /*if( modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() +"#" + classLocalName ) == null ){
                       String exp =   classLocalName + " does not exists in the  " + ontologyName + " ontology ";
                       RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
                       throw new BadRequestException( exp );
-                }
+                } */
 
-                OntClass ontClass = modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + classLocalName );
+                OntClass ontClass = RestOntInterfaceUtil.getClass( modelWrapper, classLocalName, true);
 
                 if( classElement.getChild( RestOntInterfaceConstants.SUBCLASSES ) != null ){
 
                     List<Element> subClassElementList = classElement.getChild( RestOntInterfaceConstants.SUBCLASSES ).getChildren();
                     for( Element subClassElement : subClassElementList ){
+
+                        validateNameAttribute(subClassElement, "The SubClass tag does not have name attribute");
 
                         String subClassName = subClassElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
 
@@ -692,14 +727,15 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
 
         } catch (JDOMException e) {
             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+            throw new BadRequestException( "There was a problem while parsing the request body.");
         } catch (IOException e) {
             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+            throw new BadRequestException( "There was a problem while parsing the request body.");
         }
 
         return "";
 
     }
-
 
     public String updateSubClassesOf( String ontologyName,
                                       String allClasses,
@@ -734,13 +770,14 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
             for( Element classElement : childElements){
                  String classLocalName = classElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
 
-                if( modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() +"#" + classLocalName ) == null ){
+               /* if( modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() +"#" + classLocalName ) == null ){
                       String exp =   classLocalName + " does not exists in the  " + ontologyName + " ontology ";
                       RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
                       throw new BadRequestException( exp );
-                }
+                }*/
 
-                OntClass updateClass = modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + classLocalName );
+                OntClass updateClass = RestOntInterfaceUtil.getClass( modelWrapper, classLocalName, true);
+                //modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + classLocalName );
 
                 if( classElement.getChild( RestOntInterfaceConstants.SUBCLASSES ) != null ){
 
@@ -758,8 +795,10 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
             }
         } catch (JDOMException e) {
             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+            throw new BadRequestException( "There was a problem while parsing the request body.");
         } catch (IOException e) {
             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+            throw new BadRequestException( "There was a problem while parsing the request body.");
         }
 
         return "";
@@ -785,7 +824,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         Set<OntClass> ontClasses = new HashSet<OntClass>( classes.length );
          for( String className : classes){
                  OntClass ontClass = RestOntInterfaceUtil.
-                     getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+                     getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true);
                  ontClasses.add( ontClass );
          }
          Element root = new Element( RestOntInterfaceConstants.CLASSES );
@@ -856,13 +895,14 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
 
                 String classLocalName = classElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
 
-                if( modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() +"#" + classLocalName ) == null ){
+                /*if( modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() +"#" + classLocalName ) == null ){
                       String exp =   classLocalName + " does not exists in the  " + ontologyName + " ontology ";
                       RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
                       throw new BadRequestException( exp );
-                }
+                } */
 
-                OntClass ontClass = modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + classLocalName );
+                OntClass ontClass = RestOntInterfaceUtil.getClass( modelWrapper, classLocalName, true);
+                //modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + classLocalName );
 
                 if( classElement.getChild( RestOntInterfaceConstants.SUPERCLASSES ) != null ){
 
@@ -889,14 +929,16 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
 
         } catch (JDOMException e) {
             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+            throw new BadRequestException( "There was a problem while parsing the request body.");
         } catch (IOException e) {
             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+            throw new BadRequestException( "There was a problem while parsing the request body.");
         }
 
         return "";
 
     }
-  public String updateSuperClassesOf( String ontologyName,
+     public String updateSuperClassesOf( String ontologyName,
                                       String allClasses,
                                       InputStream inputXML,
                                       ServletContext context){
@@ -922,20 +964,20 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
             if( classesRoot == null ){
                 String exp =   " The request body is not in correct format. ";
                 RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
-                throw new NotFoundException( exp );
+                throw new BadRequestException( exp );
             }
 
             List<Element> childElements = classesRoot.getChildren();
             for( Element classElement : childElements){
                  String classLocalName = classElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
 
-                if( modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() +"#" + classLocalName ) == null ){
+               /* if( RestOntInterfaceUtil.getClass( modelWrapper, classLocalName ) == null ){
                       String exp =   classLocalName + " does not exists in the  " + ontologyName + " ontology ";
                       RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
                       throw new BadRequestException( exp );
-                }
+                }*/
 
-                OntClass updateClass = modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + classLocalName );
+                OntClass updateClass = RestOntInterfaceUtil.getClass( modelWrapper, classLocalName, true );
 
                 if( classElement.getChild( RestOntInterfaceConstants.SUPERCLASSES ) != null ){
 
@@ -954,13 +996,15 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
             }
         } catch (JDOMException e) {
             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+            throw new BadRequestException( "There was a problem while parsing the request body.");
         } catch (IOException e) {
             RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+            throw new BadRequestException( "There was a problem while parsing the request body.");
         }
 
         return "";
 
-    }
+     }
 
     public String getPropertiesOfClasses( String ontologyName,
                                             String allClasses,
@@ -971,7 +1015,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         if(classes == null || classes.length == 0){
             String exp =   " The classes mentioned in the URL are not formatted properly. Please send the classes , separated ";
             RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
-            throw new NotFoundException( exp );
+            throw new BadRequestException( exp );
         }
 
         Element root = new Element( RestOntInterfaceConstants.CLASSES );
@@ -979,7 +1023,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         for( String className : classes) {
 
             OntClass ontClass = RestOntInterfaceUtil.
-                     getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+                     getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true);
             Element classElem = new Element( RestOntInterfaceConstants.CLASS );
             classElem.setAttribute( RestOntInterfaceConstants.NAME, ontClass.getLocalName() );
             classElem.setAttribute(RestOntInterfaceConstants.URI, ontClass.getURI());
@@ -987,11 +1031,29 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
             Element propertiesRoot = new Element( RestOntInterfaceConstants.PROPERTIES );
             ExtendedIterator<OntProperty> propItr = ontClass.listDeclaredProperties( false );
             while( propItr.hasNext() ){
+
                 OntProperty prop = propItr.next();
+
                 if(prop.getURI()!= null && prop.getLocalName() != null ){
                     Element propElement = new Element( RestOntInterfaceConstants.PROPERTY);
                     propElement.setAttribute( RestOntInterfaceConstants.NAME, prop.getLocalName() );
                     propElement.setAttribute( RestOntInterfaceConstants.URI, prop.getURI() );
+
+                    if( prop.isDatatypeProperty() ){
+                        propElement.setAttribute( RestOntInterfaceConstants.PROPERTY_TYPE, "data");
+
+                    }else if( prop.isObjectProperty() ){
+                        propElement.setAttribute( RestOntInterfaceConstants.PROPERTY_TYPE, "object");
+
+                    }else if ( prop.isFunctionalProperty() ){
+                        propElement.setAttribute( RestOntInterfaceConstants.PROPERTY_TYPE, "functional");
+                    }else if( prop.isSymmetricProperty() ){
+                        propElement.setAttribute( RestOntInterfaceConstants.PROPERTY_TYPE, "symmetric");
+                    }else if( prop.isTransitiveProperty() ){
+                        propElement.setAttribute( RestOntInterfaceConstants.PROPERTY_TYPE, "transitive");
+                    }else if( prop.isInverseFunctionalProperty() ){
+                        propElement.setAttribute( RestOntInterfaceConstants.PROPERTY_TYPE, "inverseFunctional");
+                    }
                     propertiesRoot.addContent( propElement );
                 }
             }
@@ -1011,13 +1073,132 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         return RestOntInterfaceUtil.getJSON(output, new TypeToken< Map<String,List<String>> >() {}.getType());*/
     }
 
+    public String getProperties( String ontologyName, String allProperties, ServletContext context ){
+       OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
+
+        String[] properties = allProperties.split(",");
+        System.out.println("Value of classes: " + allProperties);
+
+        if( properties == null || properties.length == 0){
+            String exp =   " The properties mentioned in the URL are not formatted properly. Please send the classes , separated ";
+            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+            throw new BadRequestException( exp );
+        }
+
+        Element root = new Element( RestOntInterfaceConstants.PROPERTIES );
+        Document doc = new Document( root );
+        for( String property : properties ){
+            OntProperty ontProperty = RestOntInterfaceUtil.getProperty(
+                    RestOntInterfaceUtil.getOntModel( ontologyModelStore, ontologyName), property, true );
+
+            Element propElement = new Element( RestOntInterfaceConstants.PROPERTY );
+            propElement.setAttribute( RestOntInterfaceConstants.NAME, ontProperty.getLocalName() ).
+                    setAttribute( RestOntInterfaceConstants.URI, ontProperty.getURI() );
+
+            if( ontProperty.isDatatypeProperty() ){
+                propElement.setAttribute( RestOntInterfaceConstants.PROPERTY_TYPE, "data");
+
+            }else if( ontProperty.isObjectProperty() ){
+                propElement.setAttribute( RestOntInterfaceConstants.PROPERTY_TYPE, "object");
+
+            }else if ( ontProperty.isFunctionalProperty() ){
+                propElement.setAttribute( RestOntInterfaceConstants.PROPERTY_TYPE, "functional");
+
+            }else if( ontProperty.isSymmetricProperty() ){
+                propElement.setAttribute( RestOntInterfaceConstants.PROPERTY_TYPE, "symmetric");
+
+            }else if( ontProperty.isTransitiveProperty() ){
+                propElement.setAttribute( RestOntInterfaceConstants.PROPERTY_TYPE, "transitive");
+
+            }else if( ontProperty.isInverseFunctionalProperty() ){
+                propElement.setAttribute( RestOntInterfaceConstants.PROPERTY_TYPE, "inverseFunctional");
+
+            }
+
+
+            Element domainClassRootElem = new Element( RestOntInterfaceConstants.DOMAIN );
+            ExtendedIterator<? extends  OntResource> domainItr = ontProperty.listDomain();
+             while( domainItr.hasNext() ){
+                 OntResource domClass = domainItr.next();
+                if( domClass.getLocalName() != null && domClass.getURI() != null ){
+
+                    domainClassRootElem.addContent( new Element(RestOntInterfaceConstants.CLASS) ).
+                            setAttribute(RestOntInterfaceConstants.NAME, domClass.getLocalName()).
+                            setAttribute(RestOntInterfaceConstants.URI, domClass.getURI());
+                }
+            }
+
+            Element rangeClassRootElem = new Element( RestOntInterfaceConstants.RANGE );
+            ExtendedIterator<? extends  OntResource> rangeItr = ontProperty.listDomain();
+             while( rangeItr.hasNext() ){
+                OntResource rangeClass = rangeItr.next();
+                if( rangeClass.getLocalName() != null && rangeClass.getURI() != null ){
+
+                    rangeClassRootElem.addContent(new Element(RestOntInterfaceConstants.CLASS)).
+                            setAttribute(RestOntInterfaceConstants.NAME, rangeClass.getLocalName()).
+                            setAttribute(RestOntInterfaceConstants.URI, rangeClass.getURI());
+                }
+            }
+
+            Element declaringClassRootElem = new Element( RestOntInterfaceConstants.DECLARING_CLASSES);
+            ExtendedIterator<? extends  OntClass> decItr = ontProperty.listDeclaringClasses( false );
+            while( decItr.hasNext() ){
+                OntClass decClass = decItr.next();
+                if( decClass.getLocalName() != null && decClass.getURI() != null ){
+
+                    Element decElem = new Element( RestOntInterfaceConstants.DECLARING_CLASS ) ;
+                    decElem.setAttribute(RestOntInterfaceConstants.NAME, decClass.getLocalName()).
+                            setAttribute(RestOntInterfaceConstants.URI, decClass.getURI());
+                    declaringClassRootElem.addContent( decElem );
+
+                }
+            }
+
+            Element subPropertiesRootElem = new Element( RestOntInterfaceConstants.SUBPROPERTIES );
+            ExtendedIterator<? extends  OntProperty> subPropItr = ontProperty.listSubProperties( true );
+            while( subPropItr.hasNext() ){
+                OntProperty subProp = subPropItr.next();
+                if( subProp.getLocalName() != null && subProp.getURI() != null ){
+
+                    Element subPropElem = new Element(RestOntInterfaceConstants.SUBPROPERTY);
+                    subPropElem.setAttribute(RestOntInterfaceConstants.NAME, subProp.getLocalName()).
+                            setAttribute(RestOntInterfaceConstants.URI, subProp.getURI());
+                    subPropertiesRootElem.addContent( subPropElem);
+
+                }
+            }
+
+            Element superPropertiesRootElem = new Element( RestOntInterfaceConstants.SUPERPROPERTIES );
+            ExtendedIterator<? extends  OntProperty> superPropItr = ontProperty.listSuperProperties(true);
+            while( superPropItr.hasNext() ){
+                OntProperty superProp = superPropItr.next();
+                if( superProp.getLocalName() != null && superProp.getURI() != null ){
+
+                    Element superElem = new Element(RestOntInterfaceConstants.SUPERPROPERTY);
+                    superElem. setAttribute(RestOntInterfaceConstants.NAME, superProp.getLocalName()).
+                            setAttribute(RestOntInterfaceConstants.URI, superProp.getURI());
+                    superPropertiesRootElem.addContent( superElem );
+
+                }
+            }
+
+            propElement.addContent( domainClassRootElem ).addContent( rangeClassRootElem ).
+                    addContent( declaringClassRootElem ).addContent( subPropertiesRootElem ).
+                    addContent(superPropertiesRootElem);
+            root.addContent( propElement );
+
+        }
+
+        return new XMLOutputter( Format.getPrettyFormat() ).outputString( doc );
+    }
+
 
     public String getRestrictionValuesForClass( String ontologyName,
                                                 String className,
                                                 ServletContext context){
         OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
         OntClass ontClass = RestOntInterfaceUtil.
-                getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+                getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true);
         ExtendedIterator <OntClass> superClassItr = ontClass.listSuperClasses(true);
         Map<String, Set<String>> restrictionValueMap = new HashMap<String, Set<String>>();
         while( superClassItr.hasNext() ){
@@ -1098,7 +1279,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         for( String className : classes){
             System.out.println(className);
             OntClass ontClass = RestOntInterfaceUtil.
-                getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+                getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true);
             ExtendedIterator <OntClass> superClassItr = ontClass.listSuperClasses(true);
             Set<String> restrictions = new HashSet<String>();
             while( superClassItr.hasNext() ){
@@ -1118,7 +1299,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
     }
 
 
-    public String getAllInstancesOf( String ontologyName,
+    public String getInstancesOf( String ontologyName,
                                             String allClasses,
                                             ServletContext context){
 
@@ -1131,7 +1312,44 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
             RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
             throw new NotFoundException( exp );
         }
-        Map<String, Set<String>> output = new HashMap<String, Set<String>>();
+
+        /* Set<OntClass> ontClasses = new HashSet<OntClass>( classes.length );
+        for( String className : classes){
+                OntClass ontClass = RestOntInterfaceUtil.
+                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true);
+                ontClasses.add( ontClass );
+        } */
+
+        Element root = new Element( RestOntInterfaceConstants.CLASSES );
+        Document doc = new Document( root );
+
+        for( String className : classes ){
+
+            OntClass ontClass = RestOntInterfaceUtil.
+                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true);
+
+            Element classElem = new Element( RestOntInterfaceConstants.CLASS );
+            classElem.setAttribute( RestOntInterfaceConstants.NAME, ontClass.getLocalName());
+            classElem.setAttribute(RestOntInterfaceConstants.URI, ontClass.getURI());
+
+            Element instancesClassRoot = new Element( RestOntInterfaceConstants.INSTANCES );
+            ExtendedIterator<? extends OntResource> instanceItr = ontClass.listInstances( true );
+            while( instanceItr.hasNext() ){
+                OntResource instance = instanceItr.next();
+                if( instance.getLocalName()!=null && instance.getURI()!=null){
+                    Element instanceElem = new Element( RestOntInterfaceConstants.INSTANCE );
+                    instanceElem.setAttribute(RestOntInterfaceConstants.NAME, instance.getLocalName());
+                    instanceElem.setAttribute(RestOntInterfaceConstants.URI, instance.getURI());
+                    instancesClassRoot.addContent(instanceElem);
+                }
+            }
+            classElem.addContent( instancesClassRoot );
+            root.addContent(classElem);
+
+        }
+        return new XMLOutputter( Format.getPrettyFormat() ).outputString( doc );
+
+/*        Map<String, Set<String>> output = new HashMap<String, Set<String>>();
         for( String className : classes){
             System.out.println(className);
             OntClass ontClass = RestOntInterfaceUtil.
@@ -1139,8 +1357,231 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
             Set<String> individuals = RestOntInterfaceUtil.getIndividuals(ontClass);
             output.put( className, individuals);
         }
-        return  RestOntInterfaceUtil.getJSON( output, new TypeToken< Map<String,List<String>> >() {}.getType());
+        return  RestOntInterfaceUtil.getJSON( output, new TypeToken< Map<String,List<String>> >() {}.getType());*/
     }
+
+     public String createInstancesOf( String ontologyName,
+                                            String allClasses,
+                                            InputStream inputXML,
+                                            ServletContext context){
+
+        OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
+        OntModelWrapper modelWrapper  = RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName);
+
+        String[] classesArray = allClasses.split( RestOntInterfaceConstants.COMMA_DELIMITER );
+        System.out.println("Value of classes: " + allClasses);
+
+        if( classesArray == null || classesArray.length == 0){
+            String exp =   " The classes mentioned in the URL are not formatted properly. Please send the classes , separated ";
+            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+            throw new NotFoundException( exp );
+        }
+
+        SAXBuilder builder = new SAXBuilder();
+        try {
+
+            Document inputDoc = builder.build( inputXML );
+            Element classesRoot = inputDoc.getRootElement();
+
+            if( classesRoot == null ){
+                String exp =   " The request body is not in correct format. ";
+                RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+                throw new NotFoundException( exp );
+            }
+
+            List<Element> childElements = classesRoot.getChildren();
+            for( Element classElement : childElements){
+
+                String classLocalName = classElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
+
+                if( modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() +"#" + classLocalName ) == null ){
+                      String exp =   classLocalName + " does not exists in the  " + ontologyName + " ontology ";
+                      RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
+                      throw new BadRequestException( exp );
+                }
+
+                OntClass ontClass = RestOntInterfaceUtil.getClass( modelWrapper, classLocalName, true);
+               // modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + classLocalName );
+
+                 if( classElement.getChild( RestOntInterfaceConstants.INSTANCES) == null ){
+                    List<Element> instanceElementList = classElement.getChild( RestOntInterfaceConstants.INSTANCES ).getChildren();
+                    for( Element instancesElement : instanceElementList ){
+
+                        validateNameAttribute( instancesElement, "The Instance tag does not have name attribute.");
+
+                        String instanceName = instancesElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
+
+                        Individual instance = RestOntInterfaceUtil.getIndividual( modelWrapper, instanceName, false);
+                        //modelWrapper.getOntModel().getIndividual( modelWrapper.getURI() + "#" + instanceName);
+                        if( instance == null ){
+
+                            ontClass.createIndividual( modelWrapper.getURI() + "#" + instanceName);
+
+                        } else if( !instance.isIndividual() ){
+
+                            String exp =   instanceName + " does not exist in the  " + modelWrapper.getOntologyName() + " ontology ";
+                                 exp = exp + " and there is other individual with the same name present .";
+                            RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
+                            throw new BadRequestException( exp );
+
+                         }else{
+
+                            String exp =   instanceName + " already exists in the  " + modelWrapper.getOntologyName() + " ontology ";
+                            RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
+                            throw new BadRequestException( exp );
+
+                        }
+                    }
+                }
+
+
+            }
+
+        } catch (JDOMException e) {
+            RestOntInterfaceUtil.log(SchemaInfoService.class.getName(), e);
+            throw new BadRequestException( "There was a problem while parsing the request body.");
+        } catch (IOException e) {
+            RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+            throw new BadRequestException( "There was a problem while parsing the request body.");
+        }
+
+        return "";
+
+     }
+
+   public String updateInstancesOf( String ontologyName,
+                                            String allClasses,
+                                            InputStream inputXML,
+                                            ServletContext context){
+
+       OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
+              OntModelWrapper modelWrapper  = RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName);
+
+              String[] classesArray = allClasses.split( RestOntInterfaceConstants.COMMA_DELIMITER );
+              System.out.println("Value of classes: " + allClasses);
+
+              if( classesArray == null || classesArray.length == 0){
+                  String exp =   " The classes mentioned in the URL are not formatted properly. Please send the classes , separated ";
+                  RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+                  throw new NotFoundException( exp );
+              }
+
+              SAXBuilder builder = new SAXBuilder();
+              try {
+
+                  Document inputDoc = builder.build( inputXML );
+                  Element classesRoot = inputDoc.getRootElement();
+
+                  if( classesRoot == null ){
+                      String exp =   " The request body is not in correct format. ";
+                      RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+                      throw new NotFoundException( exp );
+                  }
+
+                  List<Element> childElements = classesRoot.getChildren();
+                  for( Element classElement : childElements){
+
+                      validateNameAttribute( classElement, "The Class tag does not have name attribute.");
+
+                       String classLocalName = classElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
+
+                      /* if( modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() +"#" + classLocalName ) == null ){
+                            String exp =   classLocalName + " does not exists in the  " + ontologyName + " ontology ";
+                            RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
+                            throw new BadRequestException( exp );
+                       }*/
+
+                       OntClass updateClass = RestOntInterfaceUtil.getClass(modelWrapper, classLocalName, true);
+                       //modelWrapper.getOntModel().createClass( modelWrapper.getURI() + "#" + classLocalName );
+
+
+                       if( classElement.getChild( RestOntInterfaceConstants.INSTANCES ) != null ){
+
+                            List<Element> instanceElementList = classElement.getChild( RestOntInterfaceConstants.INSTANCES ).getChildren();
+                            for( Element instancesElement : instanceElementList ){
+
+                                validateNameAttribute( instancesElement, "The Instance tag does not have name attribute.");
+
+                                //Get the name of the instance that has to be update
+                                 String instanceName = instancesElement.getAttribute( RestOntInterfaceConstants.NAME ).getValue();
+
+                                //Validate if it exist in the ontology
+                                Individual individual = RestOntInterfaceUtil.getIndividual(modelWrapper, instanceName, false);
+                                //modelWrapper.getOntModel().getIndividual( modelWrapper.getURI() + "#" + instanceName);
+
+                                //If the individual does not exist in the ontology throw an exception : 400 BadRequest
+                                if( individual == null ){
+
+                                    String exp =   instanceName + "  does not exists in the  " + modelWrapper.getOntologyName() + " ontology ";
+                                    RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
+                                    throw new BadRequestException( exp );
+
+                                    //Validate if the subClass has the relation subClassOf with the class that we are updating.
+                                } else if ( ! individual.isIndividual()  || !individual.hasOntClass( updateClass )){
+
+                                    //If it is not a subClass throw exception: 400 BadRequest
+                                    String exp =   instanceName + " is  not  an instance of "+ classLocalName +
+                                            " the  " + modelWrapper.getOntologyName() + " ontology ";
+                                    RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
+                                    throw new BadRequestException( exp );
+
+                                }
+
+                               //Check if there is an Update tag in the request body, if not throw exception: 400 BadRequest
+                                if( instancesElement.getChild( RestOntInterfaceConstants.UPDATE ) == null ){
+
+                                    String exp = "The Instance tag doesn't have an Update tag";
+                                    RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
+                                    throw new BadRequestException( exp );
+
+                                }
+
+                                validateNameAttribute( instancesElement.getChild( RestOntInterfaceConstants.UPDATE ),
+                                        " The Update tag does not have name attribute");
+
+                                //Check for name attribute in Update tag, if not there throw exception: 400 BadRequest
+                                String updateInstanceName = instancesElement.getChild( RestOntInterfaceConstants.UPDATE ).
+                                        getAttribute(RestOntInterfaceConstants.NAME).getValue();
+
+                                if( updateInstanceName == null ){
+
+                                    String exp = "The Update tag in SubClass tag doesn't have name attribute.";
+                                    RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), new BadRequestException( exp ));
+                                    throw new BadRequestException( exp );
+
+                                }
+
+                                //Check if the class mentioned in update tag exists in the ontology, if not throw exception: 400 BadRequest
+                                //OntClass updateSubClass = modelWrapper.getOntModel().getOntClass( modelWrapper.getURI() + "#" + instanceName);
+                                Individual updateInstance = RestOntInterfaceUtil.getIndividual(modelWrapper, updateInstanceName, false);
+                                //modelWrapper.getOntModel().getIndividual( modelWrapper.getURI() + "#" + updateInstanceName);
+                                if( updateInstance != null ){
+                                    String exp = updateInstanceName + " is already present in  " + modelWrapper.getOntologyName() + "ontology.";
+                                    exp = exp + "You need to provide a non-existent instance.";
+                                    throw  new BadRequestException( exp );
+                                }
+
+                                //If all above validations pass, remove the current individual and add the new one.
+                                updateClass.dropIndividual( individual );
+                                updateClass.createIndividual( modelWrapper.getURI() + "#" + updateInstanceName);
+                            }
+
+                       }
+
+                  }
+
+              } catch (JDOMException e) {
+                 RestOntInterfaceUtil.log(SchemaInfoService.class.getName(), e);
+                  throw new BadRequestException( "There was a problem while parsing the request body.");
+              } catch (IOException e) {
+                RestOntInterfaceUtil.log( SchemaInfoService.class.getName(), e);
+                  throw new BadRequestException( "There was a problem while parsing the request body.");
+              }
+
+        return "";
+
+   }
+
 
 
     public String getAllEnumeratedClasses( String ontologyName,
@@ -1192,7 +1633,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         Map<String, Set<String>> output = new HashMap<String, Set<String>>();
         for( String enumClass : classes){
             OntClass enumOntClass = RestOntInterfaceUtil.
-                getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), enumClass);
+                getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), enumClass, true);
             if( !enumOntClass.isEnumeratedClass() ){
                 String exp =  enumClass + " is not an enumerated class in " + ontologyName + " ontology ";
                 RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
@@ -1223,13 +1664,14 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         }
         Map<String, Set<String>> output = new HashMap<String, Set<String>>();
         for( String property : properties){
-            OntProperty ontProperty = ontModelWrapper.getOntModel().getOntProperty( ontModelWrapper.getURI() + "#" + property);
+            OntProperty ontProperty = RestOntInterfaceUtil.getProperty( ontModelWrapper, property, true);
+            /*ontModelWrapper.getOntModel().getOntProperty( ontModelWrapper.getURI() + "#" + property);
 
             if( ontProperty == null){
                 String exp =  property + " does not exist in " + ontologyName + " ontology ";
                 RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
                 throw new NotFoundException( exp );
-            }
+            } */
             Set<String>domains = new HashSet<String>();
             ExtendedIterator<? extends OntResource> domItr  = ontProperty.listDomain();
             while( domItr.hasNext() ){
@@ -1243,8 +1685,32 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         }.getType());
     }
 
+     public String deleteClasses( String ontologyName,
+                                    String allClasses,
+                                    ServletContext context){
 
-    public String deleteSubClasses( String ontologyName,
+        OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
+
+        String[] classes = allClasses.split(",");
+        System.out.println("Value of classes: " + allClasses);
+
+        if( classes == null || classes.length == 0){
+            String exp =   " The classes mentioned in the URL are not formatted properly. Please send the classes , separated ";
+            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException(exp) );
+            throw new NotFoundException( exp );
+        }
+
+        for( String className : classes){
+            System.out.println(className);
+            OntClass ontClass = RestOntInterfaceUtil.
+                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true);
+            ontClass.remove();
+        }
+        return "";
+    }
+
+
+    public String deleteSubClassesOf( String ontologyName,
                                     String allClasses,
                                     ServletContext context){
 
@@ -1263,7 +1729,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         for( String className : classes){
             System.out.println(className);
             OntClass ontClass = RestOntInterfaceUtil.
-                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true);
             ExtendedIterator <OntClass> subClassItr = ontClass.listSubClasses( true );
 
              while( subClassItr.hasNext() ){
@@ -1277,7 +1743,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         return "";
     }
 
-    public String deleteSuperClasses( String ontologyName,
+    public String deleteSuperClassesOf( String ontologyName,
                                       String allClasses,
                                       ServletContext context){
 
@@ -1296,7 +1762,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         for( String className : classes){
             System.out.println(className);
             OntClass ontClass = RestOntInterfaceUtil.
-                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className);
+                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true);
             ExtendedIterator <OntClass> subClassItr = ontClass.listSuperClasses(true);
 
              while( subClassItr.hasNext() ){
@@ -1342,6 +1808,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
 
         }
     }
+
 
     private void updateSuperClasses(String ontologyName, OntModelWrapper modelWrapper,
                                     String classLocalName, OntClass updateClass,
@@ -1410,7 +1877,6 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
         }
     }
 
-
     private void updateSubClasses(OntModelWrapper modelWrapper, String classLocalName, OntClass updateClass, List<Element> subClassElementList) {
         for( Element subClassElement : subClassElementList ){
 
@@ -1472,4 +1938,15 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
                 updateClass.addSubClass(updateSubClass);
         }
     }
+
+    private void validateNameAttribute(Element classElement, String exp) {
+        if( classElement.getAttributeValue( RestOntInterfaceConstants.NAME ) == null ){
+
+            RestOntInterfaceUtil.log(SchemaInfoService.class.getName(), new NotFoundException(exp));
+            throw new BadRequestException( exp );
+
+        }
+    }
+
+
 }
