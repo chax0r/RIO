@@ -32,11 +32,17 @@ public interface RestOntInterfaceConstants {
     String UPDATE = "Update";
 
     String PROPERTY = "Property";
+    String PROPERTY_TYPE = "type";
     String PROPERTIES = "Properties";
+    String DECLARING_CLASSES = "DeclaringClasses";
+    String DECLARING_CLASS = "DeclaringClass";
     String SUBPROPERTIES = "SubProperties";
     String SUBPROPERTY = "SubProperty";
     String SUPERPROPERTIES = "SuperProperties";
     String SUPERPROPERTY = "SuperProperty";
+
+    String ONTOLOGIES = "ONTOLOGIES";
+    String ONTOLOGY = "ONTOLOGY";
 
     String COMMA_DELIMITER = ",";
 

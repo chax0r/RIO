@@ -22,17 +22,48 @@ import java.util.logging.Logger;
  */
 public class RestOntInterfaceUtil {
 
-    public static OntClass getClass( OntModelWrapper ontModelWrapper, String className ) {
+    public static OntClass getClass( OntModelWrapper ontModelWrapper, String className, boolean throwException ) {
 
-        System.out.println("Looking for " + ontModelWrapper.getURI() +"#"+className);
-        OntClass ontClass = ontModelWrapper.getOntModel().getOntClass(ontModelWrapper.getURI() + "#" + className);
+        Map<String, String> namespaceMap = ontModelWrapper.getOntModel().getNsPrefixMap();
 
-        if(ontClass == null){
+        OntClass ontClass = null;
+
+        for( String namespace : namespaceMap.values() ){
+
+            ontClass = ontModelWrapper.getOntModel().getOntClass( namespace + className );
+            if( ontClass != null )
+                break;
+
+        }
+
+        if(throwException && ontClass == null){
             String exp =  className +  " does not exist in " + ontModelWrapper.getOntologyName() + " ontology";
             RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException( exp ) );
             throw new NotFoundException( exp );
         }
         return ontClass;
+    }
+
+    public static Individual getIndividual( OntModelWrapper ontModelWrapper, String indName, boolean throwException ) {
+
+        Map<String, String> namespaceMap = ontModelWrapper.getOntModel().getNsPrefixMap();
+
+        Individual ind = null;
+
+        for( String namespace : namespaceMap.values() ){
+
+            ind = ontModelWrapper.getOntModel().getIndividual( namespace + indName );
+            if( ind != null )
+                break;
+
+        }
+
+        if( throwException && ind == null){
+            String exp =  indName +  " does not exist in " + ontModelWrapper.getOntologyName() + " ontology";
+            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException( exp ) );
+            throw new NotFoundException( exp );
+        }
+        return ind;
     }
 
 
@@ -118,5 +149,27 @@ public class RestOntInterfaceUtil {
     }
     public static void log( String className, String msg){
         Logger.getLogger(className).log(Level.INFO, msg);
+    }
+
+    public static OntProperty getProperty(OntModelWrapper ontModelWrapper , String property, boolean throwException) {
+
+        Map<String, String> namespaceMap = ontModelWrapper.getOntModel().getNsPrefixMap();
+
+        OntProperty ontProperty = null;
+
+        for( String namespace : namespaceMap.values() ){
+
+            ontProperty = ontModelWrapper.getOntModel().getOntProperty( namespace + property );
+            if( ontProperty != null )
+                break;
+
+        }
+
+        if( throwException && ontProperty == null){
+            String exp =  property +  " does not exist in " + ontModelWrapper.getOntologyName() + " ontology";
+            RestOntInterfaceUtil.log( RestOntInterfaceUtil.class.getName(), new NotFoundException( exp ) );
+            throw new NotFoundException( exp );
+        }
+        return ontProperty;
     }
 }
