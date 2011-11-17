@@ -16,13 +16,14 @@ import java.util.List;
  * Time: 9:12 PM
  * Email: <kale@cs.uga.edu>
  */
+@Path("/navigate")
 public interface NavigationalService {
      @GET
     //@Path("{ontologyName}/class/{className}/{associationsQuery:.+}")
     //@Path("{ontologyName}/{associationsQuery:([aA-zZ]+/?[aA-zZ]+)+}")
     //@Path("{ontologyName}/classes/{ass:([aA-zZ]+/?[aA-zZ]+)+}")
     @Path("{ontologyName}/classes/{query:.+}")
-    @Produces("application/json")
+    @Produces("application/xml")
     public String navigateOntologyClasses(@PathParam("ontologyName") String ontologyName,
                                    @PathParam("query") List<PathSegment> associationsQuery,
                                     @Context ServletContext context );
@@ -30,7 +31,7 @@ public interface NavigationalService {
     //@Path("{ontologyName}/class/{className}/{associationsQuery:.+}")
     //@Path("{ontologyName}/{associationsQuery:([aA-zZ]+/?[aA-zZ]+)+}")
     @Path("{ontologyName}/instances/{query:.+}")
-    @Produces("application/json")
+    @Produces("application/xml")
     public String navigateOntologyInstances (@PathParam("ontologyName") String ontologyName,
                                              @PathParam("query") List<PathSegment> associationsQuery,
                                              @Context ServletContext context );

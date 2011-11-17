@@ -57,6 +57,12 @@ public interface SchemaInfoService {
                                             @PathParam("classes") String allClasses,
                                             InputStream request,
                                             @Context ServletContext context);
+    @DELETE
+    @Path("{ontologyName}/classes/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/json")
+    public String deleteClasses( @PathParam("ontologyName") String ontologyName,
+                                    @PathParam("classes") String allClasses,
+                                    @Context ServletContext context);
     @GET
  //   @Path("{ontologyName}/classinfo/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     @Path("{ontologyName}/subClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
@@ -79,6 +85,12 @@ public interface SchemaInfoService {
                                             @PathParam("classes") String allClasses,
                                             InputStream request,
                                             @Context ServletContext context);
+    @DELETE
+    @Path("{ontologyName}/subClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/json")
+    public String deleteSubClassesOf( @PathParam("ontologyName") String ontologyName,
+                                    @PathParam("classes") String allClasses,
+                                    @Context ServletContext context);
 
     @GET
     @Path("{ontologyName}/superClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
@@ -101,6 +113,34 @@ public interface SchemaInfoService {
                                             @PathParam("classes") String allClasses,
                                             InputStream request,
                                             @Context ServletContext context);
+    @DELETE
+    @Path("{ontologyName}/superClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/json")
+    public String deleteSuperClassesOf( @PathParam("ontologyName") String ontologyName,
+                                      @PathParam("classes") String allClasses,
+                                      @Context ServletContext context);
+
+      @GET
+    @Path("{ontologyName}/instancesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/json")
+    public String getInstancesOf(  @PathParam("ontologyName") String ontologyName,
+                                             @PathParam("classes") String allClasses,
+                                             @Context ServletContext context);
+    @POST
+    @Path("{ontologyName}/instancesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/json")
+    public String createInstancesOf(  @PathParam("ontologyName") String ontologyName,
+                                             @PathParam("classes") String allClasses,
+                                             InputStream inputXML,
+                                             @Context ServletContext context);
+
+    @PUT
+    @Path("{ontologyName}/instancesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/json")
+    public String updateInstancesOf(  @PathParam("ontologyName") String ontologyName,
+                                             @PathParam("classes") String allClasses,
+                                             InputStream inputXML,
+                                             @Context ServletContext context);
 
     @GET
     @Path("{ontologyName}/propertiesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
@@ -108,6 +148,13 @@ public interface SchemaInfoService {
     String getPropertiesOfClasses( @PathParam("ontologyName") String ontologyName,
                                             @PathParam("classes") String allClasses,
                                             @Context ServletContext context);
+
+    @GET
+    @Path("{ontologyName}/properties/{properties:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/xml")
+    String getProperties( @PathParam("ontologyName") String ontologyName,
+                          @PathParam("properties") String allProperties,
+                          @Context ServletContext context );
     @GET
     @Path("{ontologyName}/restrictionValuesFor/{className}")
     //@Path("{ontologyName}/restrictionValuesFor/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
@@ -121,12 +168,7 @@ public interface SchemaInfoService {
     public String getAllRestrictionsForClasses( @PathParam("ontologyName") String ontologyName,
                                               @PathParam("classes") String classes,
                                               @Context ServletContext context);
-    @GET
-    @Path("{ontologyName}/instancesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    @Produces("application/json")
-    public String getAllInstancesOf(  @PathParam("ontologyName") String ontologyName,
-                                             @PathParam("classes") String allClasses,
-                                             @Context ServletContext context);
+
     @GET
     @Path("{ontologyName}/enumeratedClasses")
     @Produces("application/json")
@@ -149,16 +191,6 @@ public interface SchemaInfoService {
     public String getDomainOfProperties( @PathParam("ontologyName") String ontologyName,
                                        @PathParam("properties") String properties,
                                        @Context ServletContext context);
-    @DELETE
-    @Path("{ontologyName}/subClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    @Produces("application/json")
-    public String deleteSubClasses( @PathParam("ontologyName") String ontologyName,
-                                    @PathParam("classes") String allClasses,
-                                    @Context ServletContext context);
-    @DELETE
-    @Path("{ontologyName}/superClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    @Produces("application/json")
-    public String deleteSuperClasses( @PathParam("ontologyName") String ontologyName,
-                                      @PathParam("classes") String allClasses,
-                                      @Context ServletContext context);
+
+
 }
