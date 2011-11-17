@@ -3,6 +3,7 @@ package edu.uga.cs.restendpoint.service;
 import com.hp.hpl.jena.ontology.*;
 import com.hp.hpl.jena.rdf.model.*;
 import com.hp.hpl.jena.util.iterator.ExtendedIterator;
+import com.hp.hpl.jena.util.iterator.Filter;
 import edu.uga.cs.restendpoint.model.OntModelWrapper;
 import org.jdom.Document;
 import org.jdom.Element;
@@ -558,17 +559,56 @@ public class NavigationalServiceImplTest {
         InputStream is = null;
         OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_DL_MEM_TRANS_INF);
         try{
-            is = new FileInputStream("resources/pizza.owl");
+            is = new FileInputStream("resources/GlycO_inst.owl");
             model.read(is, "");
-            String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
-            OntClass americanPizza = model.getOntClass(NS + "#American");
-
-            ExtendedIterator propItr = americanPizza.listDeclaredProperties();
-            while( propItr.hasNext() ){
-                OntProperty p = (OntProperty) propItr.next();
-                System.out.println( p.getLocalName() );
-
+            model.getNsPrefixMap();
+            for(Map.Entry<String, String> dd : model.getNsPrefixMap().entrySet() ){
+                System.out.println(dd.getKey());
+                System.out.println(dd.getValue());
             }
+         /*   System.out.println();
+
+            Set<String> uri = new HashSet<String>();
+            ExtendedIterator<OntProperty> ontItr = model.listAllOntProperties();
+            while( ontItr.hasNext() ){
+                uri.add( ontItr.next().getURI() );
+            }
+            System.out.println(" Properties");
+            for ( String s : uri ){
+                System.out.println( s );
+            }
+
+            Set<String> iru = new HashSet<String>();
+            ExtendedIterator<OntClass> ontCitr = model.listNamedClasses();
+            while( ontCitr.hasNext() )
+                iru.add( ontCitr.next(). );
+
+            System.out.println(" Classes ");
+            for(String s : iru )
+                System.out.println(s);
+
+            String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
+            //OntClass americanPizza = model.getOntClass(NS + "#American");
+            OntProperty prop = model.getOntProperty( NS + "#hasTopping");
+
+
+            ExtendedIterator<? extends OntClass> propItr = prop.listDeclaringClasses( false );
+            System.out.println("Declaring classes");
+            while( propItr.hasNext() ){
+                System.out.println( propItr.next() );
+            }
+
+            System.out.println("Domain");
+            ExtendedIterator<? extends OntResource> domItr = prop.listDomain();
+            while( domItr.hasNext() ){
+                System.out.println( domItr.next() );
+            }
+
+            System.out.println(" Range ");
+            ExtendedIterator<?extends OntResource> resItr = prop.listRange();
+            while( resItr.hasNext()){
+                System.out.println( resItr.next() );
+            }*/
             }catch( FileNotFoundException fe){
             Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
         }   catch (IOException e){
@@ -586,7 +626,7 @@ public class NavigationalServiceImplTest {
             is = new FileInputStream("resources/pizza.owl");
             model.read(is, "");
             String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
-            OntClass ontClass = model.getOntClass(NS + "#American");
+            OntClass ontClass = model.getOntClass(NS + "#Country");
 
             OntProperty p;
 
@@ -600,37 +640,52 @@ public class NavigationalServiceImplTest {
 
 
             Element subClassRoot = new Element("SubClasses");
-            ExtendedIterator<OntClass> subClassItr = ontClass.listSubClasses( true );
+            ExtendedIterator<OntClass> subClassItr = ontClass.listSubClasses( true ).filterDrop( new Filter<OntClass>() {
+                @Override
+                public boolean accept(OntClass o) {
+                    return o.isAnon();
+                }
+            });
             while( subClassItr.hasNext() ){
                 OntClass cls = subClassItr.next();
-                if( cls.getLocalName() != null && cls.getURI() != null ){
+             //   if( cls.getLocalName() != null && cls.getURI() != null ){
                     Element subClassElem = new Element("Class");
                     subClassElem.setAttribute("name", cls.getLocalName());
                     subClassElem.setAttribute("uri", cls.getURI());
                     subClassRoot.addContent(subClassElem);
-                }
+               // }
             }
             Element superClassRoot = new Element("SuperClasses");
-            ExtendedIterator<OntClass> superClassItr = ontClass.listSuperClasses(true);
+            ExtendedIterator<OntClass> superClassItr = ontClass.listSuperClasses(true).filterDrop( new Filter<OntClass>() {
+                @Override
+                public boolean accept(OntClass o) {
+                    return o.isAnon();
+                }
+            });
             while( superClassItr.hasNext() ){
                 OntClass cls = superClassItr.next();
-                if( cls.getLocalName() != null && cls.getURI() !=null ){
+                //if( cls.getLocalName() != null && cls.getURI() !=null ){
                     Element superClassElem = new Element("Class");
                     superClassElem.setAttribute("name", cls.getLocalName());
                     superClassElem.setAttribute("uri", cls.getURI());
                     superClassRoot.addContent(superClassElem);
-                }
+               // }
             }
             Element instancesClassRoot = new Element("Instances");
-            ExtendedIterator<? extends OntResource> instanceItr = ontClass.listInstances( true );
+            ExtendedIterator<? extends OntResource> instanceItr = ontClass.listInstances( true ).filterDrop( new Filter() {
+                @Override
+                public boolean accept(Object o) {
+                    return !((OntResource) o).isAnon();
+                }
+            });
             while( instanceItr.hasNext() ){
                 OntResource instance = instanceItr.next();
-                if( instance.getLocalName()!=null && instance.getURI()!=null){
+                //if( instance.getLocalName()!=null && instance.getURI()!=null){
                     Element instanceElem = new Element("Instance");
                     instanceElem.setAttribute("name", instance.getLocalName());
                     instanceElem.setAttribute("uri", instance.getURI());
                      instancesClassRoot.addContent(instanceElem);
-                }
+               // }
             }
 
             classElem.addContent(subClassRoot);
