@@ -14,7 +14,7 @@ import java.io.InputStream;
  * Time: 9:12 PM
  * Email: <kale@cs.uga.edu>
  */
-@Path("/schemaService")
+@Path("/ontologyService")
 public interface SchemaInfoService {
 
     @GET
@@ -44,10 +44,9 @@ public interface SchemaInfoService {
                                             @Context ServletContext context);
 
     @POST
-    @Path("{ontologyName}/classes/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Path("{ontologyName}/classes")
     @Produces("application/xml")
     String createClasses( @PathParam("ontologyName") String ontologyName,
-                                            @PathParam("classes") String allClasses,
                                             InputStream request,
                                             @Context ServletContext context);
     @PUT
@@ -70,7 +69,7 @@ public interface SchemaInfoService {
     String getSubClassesOf( @PathParam("ontologyName") String ontologyName,
                                             @PathParam("classes") String allClasses,
                                             @Context ServletContext context);
-    @POST
+  /*  @POST
     @Path("{ontologyName}/subClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     @Produces("application/xml")
     String createSubClassesOf( @PathParam("ontologyName") String ontologyName,
@@ -91,14 +90,14 @@ public interface SchemaInfoService {
     public String deleteSubClassesOf( @PathParam("ontologyName") String ontologyName,
                                     @PathParam("classes") String allClasses,
                                     @Context ServletContext context);
-
+    */
     @GET
     @Path("{ontologyName}/superClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     @Produces("application/xml")
     String getSuperClassesOf( @PathParam("ontologyName") String ontologyName,
                                               @PathParam("classes") String allClasses,
                                               @Context ServletContext context);
-    @POST
+    /*@POST
     @Path("{ontologyName}/superClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     @Produces("application/xml")
     String createSuperClassesOf( @PathParam("ontologyName") String ontologyName,
@@ -119,29 +118,28 @@ public interface SchemaInfoService {
     public String deleteSuperClassesOf( @PathParam("ontologyName") String ontologyName,
                                       @PathParam("classes") String allClasses,
                                       @Context ServletContext context);
-
-      @GET
+      */
+    @GET
     @Path("{ontologyName}/instancesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     @Produces("application/json")
     public String getInstancesOf(  @PathParam("ontologyName") String ontologyName,
                                              @PathParam("classes") String allClasses,
                                              @Context ServletContext context);
     @POST
-    @Path("{ontologyName}/instancesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Path("{ontologyName}/instancesOf")
     @Produces("application/json")
     public String createInstancesOf(  @PathParam("ontologyName") String ontologyName,
-                                             @PathParam("classes") String allClasses,
-                                             InputStream inputXML,
-                                             @Context ServletContext context);
+                                      InputStream inputXML,
+                                      @Context ServletContext context);
 
-    @PUT
+  /*  @PUT
     @Path("{ontologyName}/instancesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     @Produces("application/json")
     public String updateInstancesOf(  @PathParam("ontologyName") String ontologyName,
                                              @PathParam("classes") String allClasses,
                                              InputStream inputXML,
                                              @Context ServletContext context);
-
+    */
     @GET
     @Path("{ontologyName}/propertiesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     @Produces("application/xml")
@@ -155,20 +153,26 @@ public interface SchemaInfoService {
     String getProperties( @PathParam("ontologyName") String ontologyName,
                           @PathParam("properties") String allProperties,
                           @Context ServletContext context );
-    @GET
-    @Path("{ontologyName}/restrictionValuesFor/{className}")
-    //@Path("{ontologyName}/restrictionValuesFor/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @POST
+    @Path("{ontologyName}/properties")
     @Produces("application/json")
-    String getRestrictionValuesForClass( @PathParam("ontologyName") String ontologyName,
-                                                @PathParam("className") String classes,
-                                                @Context ServletContext context);
+    public String createProperties( @PathParam("ontologyName") String ontologyName,
+                                    InputStream inputXML,
+                                    @Context ServletContext context);
+
     @GET
     @Path("{ontologyName}/restrictionsFor/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    //@Path("{ontologyName}/restrictionValuesFor/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     @Produces("application/json")
-    public String getAllRestrictionsForClasses( @PathParam("ontologyName") String ontologyName,
-                                              @PathParam("classes") String classes,
-                                              @Context ServletContext context);
-
+    String getRestrictionsForClass( @PathParam("ontologyName") String ontologyName,
+                                                @PathParam("classes") String classes,
+                                                @Context ServletContext context);
+    @POST
+    @Path("{ontologyName}/restrictionsFor")
+    @Produces("application/json")
+    public String createRestrictionsForClasses( String ontologyName,
+                                                InputStream inputXML,
+                                                ServletContext context);
     @GET
     @Path("{ontologyName}/enumeratedClasses")
     @Produces("application/json")
