@@ -15,9 +15,9 @@ public class SparqlQueryResultStore {
     private String id;
     private ResultSet resultSet;
     private Prologue prologue;
-    private DateTime createTime;
+    private long createTime;
 
-    public SparqlQueryResultStore(String id, ResultSet resultSet, Prologue prologue, DateTime createTime ) {
+    public SparqlQueryResultStore(String id, ResultSet resultSet, Prologue prologue, long createTime ) {
         this.id = id;
         this.resultSet = resultSet;
         this.prologue = prologue;
@@ -36,7 +36,7 @@ public class SparqlQueryResultStore {
         return prologue;
     }
 
-    public DateTime getCreateTime() {
+    public long getCreateTime() {
         return createTime;
     }
 }

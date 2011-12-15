@@ -30,4 +30,5 @@ public class OntModelWrapper {
     public String getOntologyName() {
         return ontologyName;
     }
+
 }
