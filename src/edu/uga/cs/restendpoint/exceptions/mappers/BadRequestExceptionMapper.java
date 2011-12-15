@@ -5,6 +5,7 @@ import org.jboss.resteasy.spi.BadRequestException;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
+import javax.ws.rs.ext.Provider;
 
 /**
  * Created by IntelliJ IDEA.
@@ -13,6 +14,7 @@ import javax.ws.rs.ext.ExceptionMapper;
  * Time: 10:07 PM
  * Email: <kale@cs.uga.edu>
  */
+@Provider
 public class BadRequestExceptionMapper implements ExceptionMapper<BadRequestException>{
    public Response toResponse(BadRequestException exception)
    {
