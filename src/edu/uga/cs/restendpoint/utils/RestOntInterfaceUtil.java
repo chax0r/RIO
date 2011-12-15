@@ -26,6 +26,7 @@ public class RestOntInterfaceUtil {
 
         Map<String, String> namespaceMap = ontModelWrapper.getOntModel().getNsPrefixMap();
 
+
         OntClass ontClass = null;
 
         for( String namespace : namespaceMap.values() ){
