@@ -14,7 +14,7 @@ import java.io.InputStream;
  * Time: 9:12 PM
  * Email: <kale@cs.uga.edu>
  */
-@Path("/ontologyService")
+@Path("/ontService")
 public interface SchemaInfoService {
 
     @GET
@@ -37,31 +37,91 @@ public interface SchemaInfoService {
                                  @Context ServletContext context);
 
     @GET
-    @Path("{ontologyName}/classes/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Path("{ontologyName}/class/{className}")
     @Produces("application/xml")
-    String getClasses( @PathParam("ontologyName") String ontologyName,
-                                            @PathParam("classes") String allClasses,
+    String getClass( @PathParam("ontologyName") String ontologyName,
+                                            @PathParam("className") String inputClassName,
                                             @Context ServletContext context);
 
-    @POST
-    @Path("{ontologyName}/classes")
+    @PUT
+    @Path("{ontologyName}/class/{className}")
     @Produces("application/xml")
-    String createClasses( @PathParam("ontologyName") String ontologyName,
+    String createClass( @PathParam("ontologyName") String ontologyName,
+                        @PathParam("className")    String inputClassName,
                                             InputStream request,
                                             @Context ServletContext context);
-    @PUT
-    @Path("{ontologyName}/classes/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @POST
+    @Path("{ontologyName}/class/{className}")
     @Produces("application/xml")
-    String updateClasses( @PathParam("ontologyName") String ontologyName,
-                                            @PathParam("classes") String allClasses,
+    String updateClass( @PathParam("ontologyName") String ontologyName,
+                        @PathParam("className") String inputClassName,
                                             InputStream request,
                                             @Context ServletContext context);
     @DELETE
-    @Path("{ontologyName}/classes/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    @Produces("application/json")
-    public String deleteClasses( @PathParam("ontologyName") String ontologyName,
-                                    @PathParam("classes") String allClasses,
+    @Path("{ontologyName}/class/{className}")
+    @Produces("application/xml")
+    String deleteClass( @PathParam("ontologyName") String ontologyName,
+                                    @PathParam("className") String inputClassName,
                                     @Context ServletContext context);
+    @GET
+    @Path("{ontologyName}/property/{propertyName}")
+    @Produces("application/xml")
+    String getProperty( @PathParam("ontologyName") String ontologyName,
+                          @PathParam("propertyName") String inputPropertyName,
+                          @Context ServletContext context );
+    @PUT
+    @Path("{ontologyName}/property/{propertyName}")
+    @Produces("application/xml")
+    String createProperty( @PathParam("ontologyName") String ontologyName,
+                           @PathParam("propertyName") String inputPropertyName,
+                                    InputStream inputXML,
+                                    @Context ServletContext context);
+
+    @POST
+    @Path("{ontologyName}/property/{propertyName}")
+    @Produces("application/xml")
+    String updateProperty( @PathParam("ontologyName") String ontologyName,
+                           @PathParam("propertyName") String propertyName,
+                           InputStream inputXML,
+                           @Context ServletContext servletContext);
+
+    @GET
+    @Path("{ontologyName}/instanceOf/{className}")
+    @Produces("application/xml")
+    String getInstancesOf(  @PathParam("ontologyName") String ontologyName,
+                                             @PathParam("className") String inputClassName,
+                                             @Context ServletContext context);
+    @PUT
+    @Path("{ontologyName}/instanceOf/{className}")
+    @Produces("application/xml")
+    String createInstancesOf(  @PathParam("ontologyName") String ontologyName,
+                               @PathParam("className") String className,
+                                      InputStream inputXML,
+                                      @Context ServletContext context);
+
+
+    @GET
+    @Path("{ontologyName}/restrictionsFor/{className}")
+    //@Path("{ontologyName}/restrictionValuesFor/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
+    @Produces("application/xml")
+    String getRestrictionsForClass( @PathParam("ontologyName") String ontologyName,
+                                                @PathParam("className") String inputClassName,
+                                                @Context ServletContext context);
+    @PUT
+    @Path("{ontologyName}/restrictionsFor/{className}")
+    @Produces("application/xml")
+    String createRestrictionsForClasses( @PathParam("ontologyName")String ontologyName,
+                                         @PathParam("className") String inputClassName,
+                                                InputStream inputXML,
+                                                @Context ServletContext context);
+
+    @DELETE
+    @Path("{ontololgyName}/restrictionOf/{className}/{propertyName}")
+    @Produces("application/xml")
+    String getRestrictionsOfClass( @PathParam("ontologyName") String ontologyName,
+                                   @PathParam("className") String className,
+                                   @PathParam("propertyName") String propertyName,
+                                   @Context ServletContext context);
     @GET
  //   @Path("{ontologyName}/classinfo/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     @Path("{ontologyName}/subClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
@@ -69,6 +129,7 @@ public interface SchemaInfoService {
     String getSubClassesOf( @PathParam("ontologyName") String ontologyName,
                                             @PathParam("classes") String allClasses,
                                             @Context ServletContext context);
+
   /*  @POST
     @Path("{ontologyName}/subClassesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
     @Produces("application/xml")
@@ -119,18 +180,6 @@ public interface SchemaInfoService {
                                       @PathParam("classes") String allClasses,
                                       @Context ServletContext context);
       */
-    @GET
-    @Path("{ontologyName}/instancesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    @Produces("application/json")
-    public String getInstancesOf(  @PathParam("ontologyName") String ontologyName,
-                                             @PathParam("classes") String allClasses,
-                                             @Context ServletContext context);
-    @POST
-    @Path("{ontologyName}/instancesOf")
-    @Produces("application/json")
-    public String createInstancesOf(  @PathParam("ontologyName") String ontologyName,
-                                      InputStream inputXML,
-                                      @Context ServletContext context);
 
   /*  @PUT
     @Path("{ontologyName}/instancesOf/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
@@ -147,32 +196,8 @@ public interface SchemaInfoService {
                                             @PathParam("classes") String allClasses,
                                             @Context ServletContext context);
 
-    @GET
-    @Path("{ontologyName}/properties/{properties:([aA-zZ]+,?[aA-zZ]+)+}")
-    @Produces("application/xml")
-    String getProperties( @PathParam("ontologyName") String ontologyName,
-                          @PathParam("properties") String allProperties,
-                          @Context ServletContext context );
-    @POST
-    @Path("{ontologyName}/properties")
-    @Produces("application/json")
-    public String createProperties( @PathParam("ontologyName") String ontologyName,
-                                    InputStream inputXML,
-                                    @Context ServletContext context);
 
-    @GET
-    @Path("{ontologyName}/restrictionsFor/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    //@Path("{ontologyName}/restrictionValuesFor/{classes:([aA-zZ]+,?[aA-zZ]+)+}")
-    @Produces("application/json")
-    String getRestrictionsForClass( @PathParam("ontologyName") String ontologyName,
-                                                @PathParam("classes") String classes,
-                                                @Context ServletContext context);
-    @POST
-    @Path("{ontologyName}/restrictionsFor")
-    @Produces("application/json")
-    public String createRestrictionsForClasses( String ontologyName,
-                                                InputStream inputXML,
-                                                ServletContext context);
+
     @GET
     @Path("{ontologyName}/enumeratedClasses")
     @Produces("application/json")
