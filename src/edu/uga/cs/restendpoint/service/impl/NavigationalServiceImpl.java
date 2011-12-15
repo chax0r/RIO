@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.hp.hpl.jena.ontology.*;
 import com.hp.hpl.jena.util.iterator.ExtendedIterator;
+import com.hp.hpl.jena.util.iterator.Filter;
 import edu.uga.cs.restendpoint.model.OntModelWrapper;
 import edu.uga.cs.restendpoint.model.OntologyModelStore;
 import edu.uga.cs.restendpoint.service.api.NavigationalService;
@@ -309,11 +310,70 @@ public  class NavigationalServiceImpl implements NavigationalService {
         Document doc = new Document( root );
 
         for( OntResource res : interimResults ){
-            if( res.getLocalName() != null & res.getURI() != null ){
+            if( res.getLocalName() != null & res.getURI() != null && res.isClass() ){
+
+                OntClass ontClass = res.as( OntClass.class );
+
                 Element classElem = new Element( RestOntInterfaceConstants.CLASS );
-                classElem.setAttribute( RestOntInterfaceConstants.NAME, res.getLocalName() ).
-                        setAttribute( RestOntInterfaceConstants.URI, res.getURI() );
-                root.addContent( classElem );
+
+                classElem.setAttribute( RestOntInterfaceConstants.NAME, ontClass.getLocalName() ).
+                        setAttribute( RestOntInterfaceConstants.URI, ontClass.getURI() );
+
+            Element subClassRoot = new Element( RestOntInterfaceConstants.SUBCLASSES );
+            ExtendedIterator<OntClass> subClassItr = ontClass.listSubClasses( true );
+            while( subClassItr.hasNext() ){
+                OntClass cls = subClassItr.next();
+                if( cls.getLocalName() != null && cls.getURI() != null ){
+                    Element subClassElem = new Element( RestOntInterfaceConstants.SUBCLASS );
+                    subClassElem.setAttribute(RestOntInterfaceConstants.NAME, cls.getLocalName());
+                    subClassElem.setAttribute(RestOntInterfaceConstants.URI, cls.getURI());
+                    subClassRoot.addContent(subClassElem);
+                }
+            }
+
+            Element superClassRoot = new Element( RestOntInterfaceConstants.SUPERCLASSES );
+            ExtendedIterator<OntClass> superClassItr = ontClass.listSuperClasses(true);
+            while( superClassItr.hasNext() ){
+                OntClass cls = superClassItr.next();
+                if( cls.getLocalName() != null && cls.getURI() !=null ){
+                    Element superClassElem = new Element( RestOntInterfaceConstants.SUPERCLASS );
+                    superClassElem.setAttribute(RestOntInterfaceConstants.NAME, cls.getLocalName());
+                    superClassElem.setAttribute("uri", cls.getURI());
+                    superClassRoot.addContent(superClassElem);
+                }
+            }
+
+            Element instancesClassRoot = new Element( RestOntInterfaceConstants.INSTANCES );
+            ExtendedIterator<? extends OntResource> instanceItr = ontClass.listInstances( true );
+            while( instanceItr.hasNext() ){
+                OntResource instance = instanceItr.next();
+                if( instance.getLocalName()!=null && instance.getURI()!=null){
+                    Element instanceElem = new Element( RestOntInterfaceConstants.INSTANCE );
+                    instanceElem.setAttribute(RestOntInterfaceConstants.NAME, instance.getLocalName());
+                    instanceElem.setAttribute(RestOntInterfaceConstants.URI, instance.getURI());
+                    instancesClassRoot.addContent(instanceElem);
+                }
+            }
+
+            Element propertiesRoot = new Element( RestOntInterfaceConstants.PROPERTIES );
+            ExtendedIterator<OntProperty> propItr = ontClass.listDeclaredProperties( false );
+            while( propItr.hasNext() ){
+                OntProperty prop = propItr.next();
+                if(prop.getURI()!= null && prop.getLocalName() != null ){
+                    Element propElement = new Element( RestOntInterfaceConstants.PROPERTY);
+                    propElement.setAttribute( RestOntInterfaceConstants.NAME, prop.getLocalName() );
+                    propElement.setAttribute( RestOntInterfaceConstants.URI, prop.getURI() );
+                    propertiesRoot.addContent( propElement );
+                }
+            }
+
+            classElem.addContent( subClassRoot );
+            classElem.addContent( superClassRoot );
+            classElem.addContent( instancesClassRoot );
+            classElem.addContent( propertiesRoot );
+
+            root.addContent( classElem );
+
             }
 
         }
@@ -377,6 +437,7 @@ public  class NavigationalServiceImpl implements NavigationalService {
 
  //           }
 
+
             Set<OntClass> interim = find( cls, association );
             if( interim!=null && !interim.isEmpty() ){
                 resultClasses.addAll( interim );
@@ -387,17 +448,27 @@ public  class NavigationalServiceImpl implements NavigationalService {
     }
 
     //TODO: Not considering cardinality restrictions
-    private Set<OntClass> find(OntClass cls, OntProperty association) {
+    private Set<OntClass> find(OntClass cls, final OntProperty association) {
 
          Set<OntClass> resultClasses = new HashSet<OntClass>();
-         ExtendedIterator <OntClass> superClassItr = cls.listSuperClasses( false );
+         ExtendedIterator <OntClass> superClassItr = cls.listSuperClasses( false ).filterKeep( new Filter<OntClass>() {
+             @Override
+             public boolean accept(OntClass o) {
+
+                 if( o.isRestriction() ){
+
+                     Restriction restriction = o.as( Restriction.class);
+                     return  restriction.onProperty( association );
+                 }
+                 return false ;
+             }
+         });
             while( superClassItr.hasNext() ){
+
                 OntClass c =  superClassItr.next();
+                Restriction r = c.as(Restriction.class);
 
-                if( c.isRestriction()){
-                    Restriction r = c.as(Restriction.class);
-
-                    if( r.getOnProperty().getURI().compareToIgnoreCase( association.getURI() ) == 0){
+                   // if( r.getOnProperty().getURI().compareToIgnoreCase( association.getURI() ) == 0){
                         System.out.println("Restriction on : "+ r.getOnProperty().getLocalName() );
 
                         if(r.isAllValuesFromRestriction()){
@@ -430,8 +501,7 @@ public  class NavigationalServiceImpl implements NavigationalService {
 
                             }
                         }
-                    }
-                }
+                    //}
 
             }
         return resultClasses;
