@@ -48,11 +48,6 @@ public class CustomServletContextListener implements ServletContextListener,
             InputStream propertiesFileStream = sc.getResourceAsStream("/WEB-INF/resources/" + propertiesFile);
             ( (PropertiesConfiguration)configuration ).load( propertiesFileStream );
             List<String> ontologies =  Arrays.asList(configuration.getStringArray("ontologies"));
-            /*List<String> filePaths = new ArrayList<String>(ontFileNames.size());
-            for(String fileName : ontFileNames){
-                if( configuration.getString( fileName ) != null)
-                    filePaths.add( configuration.getString(fileName) );
-            } */
 
             OntologyModelStore ontologyModelStore = new OntologyModelStore( );
             for( String ontology : ontologies ){
