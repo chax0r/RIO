@@ -2,6 +2,9 @@ package edu.uga.cs.restendpoint.service;
 
 import com.hp.hpl.jena.ontology.*;
 import com.hp.hpl.jena.rdf.model.*;
+import com.hp.hpl.jena.reasoner.Reasoner;
+import com.hp.hpl.jena.reasoner.ReasonerRegistry;
+import com.hp.hpl.jena.reasoner.ValidityReport;
 import com.hp.hpl.jena.util.iterator.ExtendedIterator;
 import com.hp.hpl.jena.util.iterator.Filter;
 import edu.uga.cs.restendpoint.model.OntModelWrapper;
@@ -11,9 +14,11 @@ import org.jdom.JDOMException;
 import org.jdom.input.SAXBuilder;
 import org.jdom.output.Format;
 import org.jdom.output.XMLOutputter;
+import org.junit.After;
 import org.junit.Test;
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,12 +46,6 @@ public class NavigationalServiceImplTest {
         }
 
         String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
-        OntModelWrapper ontModelWrapper = new OntModelWrapper(model, NS, "pizza" );
-      /*  System.out.println("Output of the test case: ");
-        String testPath = "hasTopping/hasSpiciness";
-        Set<OntResource> ontResources = new HashSet<OntResource>();
-        ontResources.add( model.getOntClass( NS + "#" + "American").as( OntResource.class ) );
-        System.out.println( new NavigationalServiceImpl().executePathQuery( ontModelWrapper, null, ontResources, true) );*/
 
         Individual american = model.getIndividual( NS + "#" + "American");
         Individual america = model.getIndividual( NS + "#" + "America");
@@ -56,11 +55,6 @@ public class NavigationalServiceImplTest {
         System.out.println("can american casted as ontclass: " + american.isIndividual());
         System.out.println(prop.isIndividual());
 
-        //OntClass cls = model.getOntClass(NS + "#" + "America");
-
-        //System.out.println("IS it null " + ind.getOntClass().getLocalName());
-
-        //System.out.println( new NavigationalServiceImpl().navigateOntologyClasses());
     }
 
 
@@ -420,8 +414,6 @@ public class NavigationalServiceImplTest {
             model.read(is, "");
             is.close();
 
-
-
             OntClass namedPizza = model.getOntClass(NS + "#NamedPizza");
             OntProperty hasTopping = model.getObjectProperty(NS + "#hasTopping");
 /*
@@ -484,6 +476,7 @@ public class NavigationalServiceImplTest {
 
         System.out.println(threadMap.get(t1));
         System.out.println(threadMap.get(t2));
+
        // InputStream is = null;
        // OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
        // String NS = "http://owl.man.ac.uk/2006/07/sssw/people";
@@ -508,21 +501,43 @@ public class NavigationalServiceImplTest {
     @Test
     public void testMineClass(){
         InputStream is = null;
-        OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_DL_MEM_TRANS_INF);
+        OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM_TRANS_INF);
         try{
             is = new FileInputStream("resources/pizza.owl");
             model.read(is, "");
             String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
-            OntClass americanPizza = model.getOntClass(NS + "#American");
 
-            ExtendedIterator propItr = americanPizza.listDeclaredProperties();
+            OntClass americanPizza = model.getOntClass(NS + "#NamedPizza");
+
+          /*  ExtendedIterator propItr = americanPizza.listDeclaredProperties();
             while( propItr.hasNext() ){
                 OntProperty p = (OntProperty) propItr.next();
                 System.out.println( p.getLocalName() );
 
+            }*/
+
+            ExtendedIterator baap1 =  americanPizza.listSubClasses( true );
+            while ( baap1.hasNext() ){
+                OntClass c = (OntClass) baap1.next();
+                if( c.getLocalName() != null)
+                System.out.println( c.getLocalName());
             }
 
-            OntProperty p = model.getOntProperty(NS + "#hasTopping");
+            System.out.println("************After *************");
+            OntClass subClass = model.createClass(NS + "#" + "IndianPizza");
+            americanPizza.addSubClass( subClass);
+/*            ExtendedIterator baap =  americanPizza.listSubClasses( true );
+            while ( baap.hasNext() ){
+                OntClass c = (OntClass) baap.next();
+                if( c.getLocalName() != null)
+                System.out.println( c.getLocalName());
+            }*/
+
+            subClass.addSubClass( americanPizza );
+            System.out.println( model.validate().isClean());
+
+
+          /*  OntProperty p = model.getOntProperty(NS + "#hasTopping");
 
             System.out.println("******* SuperClasses of American");
 
@@ -544,7 +559,7 @@ public class NavigationalServiceImplTest {
                     //System.out.println( ( (Restriction) ( (OntClass)baap.next() ).as(Restriction.class) ).getOnProperty().getURI() );
                     //System.out.println( ( (Restriction) ( (OntClass)baap.next() ).as(Restriction.class) ).getOnProperty().getURI() );
                 }
-            }
+            }*/
         }catch( FileNotFoundException fe){
             Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
         }   catch (IOException e){
@@ -557,15 +572,49 @@ public class NavigationalServiceImplTest {
       @Test
     public void testMineProperty(){
         InputStream is = null;
-        OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_DL_MEM_TRANS_INF);
+        OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM);
         try{
             is = new FileInputStream("resources/GlycO_inst.owl");
             model.read(is, "");
-            model.getNsPrefixMap();
+            String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
+         //   OntClass newClass = model.getOntClass(NS + "#Pizza");
+            OntProperty hasToppings = model.getOntProperty( NS +"#hasTopping");
+         //   System.out.println( hasToppings.hasDomain( newClass ));
+
+            OntClass american = model.getOntClass(NS+"#American");
+            /*Individual individual = model.createIndividual( NS + "#NewAmericanHot", americanHot );
+
+            OntProperty p = model.getOntProperty(NS+"#hasTopping");
+            individual.setPropertyValue( p, individual);
+            ValidityReport report = model.validate();
+            System.out.println( report.isValid() );*/
+
+            for( Map.Entry<String, String> e : model.getNsPrefixMap().entrySet()){
+                System.out.println( e.getKey() + " : " + e.getValue());
+            }
+                                                         /*
+            System.out.println("***************");
+            ExtendedIterator<OntClass> superClass = model.listHierarchyRootClasses().filterDrop( new Filter<OntClass>() {
+                @Override
+                public boolean accept(OntClass o) {
+                    return o.isAnon();
+                }
+            });
+            while( superClass.hasNext() ){
+                System.out.println( superClass.next().getLocalName() );
+            }
+           */
+                            /*
+            OntClass thing = model.getOntClass(NS +"#Thing");
+            ExtendedIterator<OntClass> subClass = thing.listSuperClasses( false );
+            while( subClass.hasNext() ){
+                System.out.println( subClass.next().getLocalName() );
+            }                                               */
+        /*    model.getNsPrefixMap();
             for(Map.Entry<String, String> dd : model.getNsPrefixMap().entrySet() ){
                 System.out.println(dd.getKey());
                 System.out.println(dd.getValue());
-            }
+            }*/
          /*   System.out.println();
 
             Set<String> uri = new HashSet<String>();
@@ -731,6 +780,7 @@ public class NavigationalServiceImplTest {
             SAXBuilder builder = new SAXBuilder();
             Document inputDoc = builder.build( new FileInputStream("test.xml") );
             Element classRoot = inputDoc.getRootElement();
+            @SuppressWarnings("unckecked")
             List<Element> classChild = classRoot.getChildren();
             System.out.println("Root : " + classRoot );
             for( Element ce : classChild ){
@@ -738,6 +788,7 @@ public class NavigationalServiceImplTest {
                 String classUri = ce.getAttribute("uri").getValue();
                 OntClass aClass = model.getOntClass( classUri );
                 System.out.println("Class to modify: " + classUri);
+                @SuppressWarnings("unckecked")
                 List<Element> superClasses = ce.getChild("SuperClasses").getChildren();
                 System.out.println("************ size : " + superClasses.size());
                 for(Element s : superClasses ){
@@ -771,6 +822,88 @@ public class NavigationalServiceImplTest {
 
 
          }catch( FileNotFoundException fe){
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
+        }   catch (IOException e){
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);
+        }
+    }
+
+    @Test
+    public void testValidate(){
+
+        InputStream is = null;
+        OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM);
+        try{
+            is = new FileInputStream("resources/pizza.owl");
+            model.read(is, "");
+
+            String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
+
+            OntClass namedPizza = model.getOntClass(NS + "#NamedPizza");
+        /*     ExtendedIterator baap1 =  americanPizza.listSubClasses( true );
+            while ( baap1.hasNext() ){
+                OntClass c = (OntClass) baap1.next();
+                if( c.getLocalName() != null)
+                System.out.println( c.getLocalName());
+            }*/
+
+            //System.out.println("************After *************");
+            OntClass subClass = model.createClass(NS + "#" + "IndianPizza");
+            namedPizza.addSubClass( subClass);
+
+            OntClass nonVegClass = model.getOntClass( NS +"#NonVegetarianPizza");
+            OntClass vegClass = model.getOntClass( NS+"#VegetarianPizza");
+
+            Individual nonVeg = model.createIndividual(NS+ "#nonVeg" ,  nonVegClass);
+            vegClass.createIndividual( NS +"#nonVeg");
+/*            ExtendedIterator baap =  americanPizza.listSubClasses( true );
+            while ( baap.hasNext() ){
+                OntClass c = (OntClass) baap.next();
+                if( c.getLocalName() != null)
+                System.out.println( c.getLocalName());
+            }*/
+
+            subClass.addSubClass( namedPizza );
+
+
+            Reasoner reasoner = ReasonerRegistry.getOWLMicroReasoner();
+
+
+            InfModel infModel = ModelFactory.createInfModel( reasoner, model );
+
+            Iterator<ValidityReport.Report> repItr = infModel.validate().getReports();
+
+            while( repItr.hasNext() ){
+
+                System.out.println( repItr.next().getType());
+                System.out.println( repItr.next().getDescription() );
+            }
+
+         }catch( FileNotFoundException fe){
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
+        }   catch (IOException e){
+            Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);
+        }
+
+    }
+
+
+    @Test
+    public void testNameSpace(){
+        InputStream is = null;
+        OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
+        try{
+            is = new FileInputStream("resources/FlyBase.owl");
+            model.read(is, "");
+
+            for(Map.Entry<String, String> ns : model.getNsPrefixMap().entrySet()){
+                System.out.println("Key: " + ns.getKey());
+                System.out.println("Value: " + ns.getValue());
+            }
+
+            System.out.println("1:"+ model.getNsPrefixURI("obo"));
+            System.out.println("2:" +model.getNsPrefixMap().get("obo"));
+          }catch( FileNotFoundException fe){
             Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, fe);
         }   catch (IOException e){
             Logger.getLogger( NavigationalServiceImplTest.class.getName()).log(Level.SEVERE, null, e);

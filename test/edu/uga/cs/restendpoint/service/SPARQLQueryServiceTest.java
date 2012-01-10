@@ -1,8 +1,7 @@
 package edu.uga.cs.restendpoint.service;
 
 
-import com.hp.hpl.jena.ontology.OntModel;
-import com.hp.hpl.jena.ontology.OntModelSpec;
+import com.hp.hpl.jena.ontology.*;
 import com.hp.hpl.jena.query.QueryException;
 import com.hp.hpl.jena.query.ResultSet;
 import com.hp.hpl.jena.sparql.core.Prologue;
@@ -17,9 +16,15 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 import java.io.FileInputStream;
+
+import com.hp.hpl.jena.sparql.resultset.ResultsFormat;
+import com.hp.hpl.jena.util.iterator.ExtendedIterator;
+import com.hp.hpl.jena.util.iterator.Filter;
 import org.junit.Test;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.net.HttpURLConnection;
@@ -54,7 +59,8 @@ public class SPARQLQueryServiceTest {
 
 			assertEquals( HttpURLConnection.HTTP_CREATED, connection.getResponseCode() );
 			connection.disconnect();
-		} 
+
+		}
 		catch (MalformedURLException ex) {
 			Logger.getLogger(SPARQLQueryServiceTest.class.getName()).log(Level.SEVERE, null, ex);
 		}
@@ -68,7 +74,7 @@ public class SPARQLQueryServiceTest {
 	public void executeQuery(){
 		InputStream is = null;
 		try {
-            is = new FileInputStream("src/resources/pizza.owl");
+            is = new FileInputStream("resources/wine.owl");
             OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM, null);
             String source = "http://www.co-ode.org/ontologies/pizza/ ";
 			model.read(is, "");
@@ -82,10 +88,11 @@ public class SPARQLQueryServiceTest {
                     " PREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>\n" +
                     " PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>\n" +
                     " PREFIX owl:   <http://www.w3.org/2000/07/owl#>\n" +
-                    " PREFIX  p:    <http://www.co-ode.org/ontologies/pizza/pizza.owl#>\n" +
+                    " PREFIX food:  <http://krono.act.uji.es/Links/ontologies/food.owl#>\n" +
+                    " PREFIX vin:   <http://krono.act.uji.es/Links/ontologies/wine.owl#>\n"+
                     " SELECT DISTINCT  *\n" +
                     " WHERE\n" +
-                    "  { ?targetPizza    rdfs:subClassOf   _:pizza .\n" +
+                    "  { _:Meal     rdfs:subClassOf   ?targetWine .\n" +
                     "    \n" +
                     " }";
 
@@ -107,7 +114,8 @@ public class SPARQLQueryServiceTest {
 
 			ResultSet results =  qexec.execSelect();
 			Prologue prologue = new Prologue( prefixMap );
-			String output = ResultSetFormatter.asText( results, prologue );
+//			String output = ResultSetFormatter.asText( results, prologue );
+            String output = ResultSetFormatter.asXMLString( results );
 			System.out.println("Output: "+output);
 		} catch(QueryException qe){
 				Logger.getLogger(SPARQLQueryServiceTest.class.getName()).log(Level.SEVERE, null, qe);
