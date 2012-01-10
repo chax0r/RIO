@@ -433,11 +433,6 @@ public  class NavigationalServiceImpl implements NavigationalService {
             //TODO: Do we need to check if its a domain/range ?
             // What info we will get if the given ontClass is a domain/range of the given association
 
-//            if( association.hasDomain( cls.asResource() ) ){
-
- //           }
-
-
             Set<OntClass> interim = find( cls, association );
             if( interim!=null && !interim.isEmpty() ){
                 resultClasses.addAll( interim );

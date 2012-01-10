@@ -49,29 +49,7 @@ public class SPARQLQueryServiceImpl implements SPARQLQueryService {
                                  String queryString){
 
 
-        SAXBuilder builder = new SAXBuilder();
-
-         //try {
-
-          //  Document inputDoc = builder.build( inputXML );
-           // Element queryRoot = inputDoc.getRootElement();
-
-           /* if( queryRoot == null ){
-                String exp =   " The request body is not in correct format. ";
-                RestOntInterfaceUtil.log(SPARQLQueryServiceImpl.class.getName(), new NotFoundException(exp));
-                throw new BadRequestException( exp );
-            }
-
-            if( queryRoot.getContent().size() != 1){
-
-                String exp =   " The request body is not in correct format. ";
-                RestOntInterfaceUtil.log(SPARQLQueryServiceImpl.class.getName(), new NotFoundException(exp));
-                throw new BadRequestException( exp );
-
-            }
-
-            String queryString = queryRoot.getContent().get(0).toString();
-             */
+            SAXBuilder builder = new SAXBuilder();
             System.out.println( "Name of the ontology: " + ontologyName);
             System.out.println( "Data posted: " + queryString);
 

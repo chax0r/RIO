@@ -1888,16 +1888,7 @@ public class SchemaInfoServiceImpl implements SchemaInfoService {
                                             String className,
                                             ServletContext context){
 
-        OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
-
-        /* Set<OntClass> ontClasses = new HashSet<OntClass>( classes.length );
-        for( String className : classes){
-                OntClass ontClass = RestOntInterfaceUtil.
-                    getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true);
-                ontClasses.add( ontClass );
-        } */
-
-
+            OntologyModelStore ontologyModelStore = (OntologyModelStore) context.getAttribute( "ontologyModelStore" );
 
             OntClass ontClass = RestOntInterfaceUtil.
                     getClass(RestOntInterfaceUtil.getOntModel(ontologyModelStore, ontologyName), className, true);
